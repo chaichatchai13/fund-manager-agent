@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "thetaflow"
+version = "0.1.0"
+description = "ThetaFlow — Automated options income agent for selling puts and covered calls"
+authors = ["Chatchai Satienpattanakul <chaichatchai13@gmail.com>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115"
+uvicorn = {extras = ["standard"], version = "^0.34"}
+schwab-py = "^1.5"
+anthropic = "^0.51"
+sqlalchemy = "^2.0"
+alembic = "^1.14"
+aiosqlite = "^0.21"
+apscheduler = "^3.11"
+pydantic = "^2.11"
+pydantic-settings = "^2.9"
+python-dotenv = "^1.1"
+httpx = "^0.28"
+structlog = "^25.3"
+tenacity = "^9.1"
+asyncpg = "^0.31.0"
+greenlet = "^3.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2"
+pytest-asyncio = "^0.23"
+pytest-mock = "^3.14"
+ruff = "^0.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

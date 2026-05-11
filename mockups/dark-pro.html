@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mock A — Dark Pro (TradingView style)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #0d1117; color: #e6edf3; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; }
+  .green { color: #3fb950; } .red { color: #f85149; }
+  .badge-green { background: #1a3028; color: #3fb950; }
+  .badge-yellow { background: #2d2a14; color: #d29922; }
+  .stat-up { color: #3fb950; } .stat-dn { color: #f85149; }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #161b22; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  .nav-active { background: #1f6feb22; color: #58a6ff; border-bottom: 2px solid #58a6ff; }
+  .tab-btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .tab-active { background: #1f6feb; color: #fff; }
+  .tab-inactive { background: #21262d; color: #8b949e; }
+  .mini-chart { height: 40px; width: 100%; }
+  .sparkline { fill: none; stroke: #3fb950; stroke-width: 1.5; }
+  .sparkline-area { fill: url(#greenGrad); opacity: 0.3; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Header -->
+<header style="background:#161b22;border-bottom:1px solid #30363d;" class="sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div style="background:linear-gradient(135deg,#1f6feb,#58a6ff);border-radius:8px;" class="w-8 h-8 flex items-center justify-center text-white font-bold text-sm">FM</div>
+    <span class="font-bold text-lg text-white">FundManager</span>
+    <span style="background:#21262d;color:#8b949e;font-size:11px;padding:2px 8px;border-radius:4px;">LIVE</span>
+  </div>
+  <nav class="flex gap-1">
+    <button class="tab-btn tab-active">Dashboard</button>
+    <button class="tab-btn tab-inactive">Positions</button>
+    <button class="tab-btn tab-inactive">Rules</button>
+    <button class="tab-btn tab-inactive">Agent Chat</button>
+  </nav>
+  <div class="flex items-center gap-4 text-sm">
+    <div class="text-center"><div style="color:#8b949e;font-size:11px;">Portfolio</div><div class="text-white font-bold">$52,340.00</div></div>
+    <div class="text-center"><div style="color:#8b949e;font-size:11px;">Day P&L</div><div class="green font-bold">+$420.50</div></div>
+    <div class="text-center"><div style="color:#8b949e;font-size:11px;">Buying Power</div><div class="text-white font-bold">$24,200.00</div></div>
+    <div style="width:8px;height:8px;border-radius:50%;background:#3fb950;animation:pulse 2s infinite;" class="ml-2"></div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+  <!-- Account Overview Row -->
+  <div class="grid grid-cols-4 gap-4">
+    <div class="card p-4">
+      <div style="color:#8b949e;font-size:12px;" class="mb-1">Total Portfolio Value</div>
+      <div class="text-2xl font-bold text-white">$52,340.00</div>
+      <div class="green text-sm mt-1">▲ +$1,240 (+2.4%) this month</div>
+    </div>
+    <div class="card p-4">
+      <div style="color:#8b949e;font-size:12px;" class="mb-1">Open Positions</div>
+      <div class="text-2xl font-bold text-white">4</div>
+      <div style="color:#8b949e;font-size:12px;" class="mt-1">3 OPEN · 1 CLOSING</div>
+    </div>
+    <div class="card p-4">
+      <div style="color:#8b949e;font-size:12px;" class="mb-1">Total Premium Collected</div>
+      <div class="text-2xl font-bold text-white">$2,850.00</div>
+      <div class="green text-sm mt-1">▲ Unrealized P&L: +$1,420</div>
+    </div>
+    <div class="card p-4">
+      <div style="color:#8b949e;font-size:12px;" class="mb-1">Win Rate (All Time)</div>
+      <div class="text-2xl font-bold text-white">78%</div>
+      <div style="color:#8b949e;font-size:12px;" class="mt-1">21 wins / 27 trades</div>
+    </div>
+  </div>
+
+  <!-- Holdings + Chart Row -->
+  <div class="grid grid-cols-3 gap-4">
+
+    <!-- Account Holdings -->
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-white">Account Holdings</h2>
+        <span style="color:#58a6ff;font-size:12px;">Schwab Live</span>
+      </div>
+      <!-- Stocks -->
+      <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.05em;" class="mb-2">Equities</div>
+      <div class="space-y-2 mb-4">
+        <div class="flex items-center justify-between py-1">
+          <div><div class="font-medium text-white text-sm">TSLA</div><div style="color:#8b949e;font-size:11px;">10 shares</div></div>
+          <div class="text-right"><div class="text-white text-sm font-medium">$3,510.00</div><div class="green text-xs">▲ +2.1%</div></div>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <div><div class="font-medium text-white text-sm">IREN</div><div style="color:#8b949e;font-size:11px;">500 shares</div></div>
+          <div class="text-right"><div class="text-white text-sm font-medium">$4,250.00</div><div class="red text-xs">▼ -1.3%</div></div>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <div><div class="font-medium text-white text-sm">NVDA</div><div style="color:#8b949e;font-size:11px;">5 shares</div></div>
+          <div class="text-right"><div class="text-white text-sm font-medium">$4,375.00</div><div class="green text-xs">▲ +0.8%</div></div>
+        </div>
+      </div>
+      <!-- Options -->
+      <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.05em;" class="mb-2">Short Puts</div>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between py-1">
+          <div><div class="font-medium text-sm" style="color:#d2a8ff;">TSLA $310P</div><div style="color:#8b949e;font-size:11px;">May 15 · 32 DTE</div></div>
+          <div class="text-right"><div class="green text-sm font-medium">+$420</div><div style="color:#8b949e;font-size:11px;">70% profit</div></div>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <div><div class="font-medium text-sm" style="color:#d2a8ff;">IREN $7P</div><div style="color:#8b949e;font-size:11px;">May 15 · 32 DTE</div></div>
+          <div class="text-right"><div class="green text-sm font-medium">+$85</div><div style="color:#8b949e;font-size:11px;">42% profit</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P&L Chart (2 cols) -->
+    <div class="card p-4 col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-white">Cumulative P&L</h2>
+        <div class="flex gap-1">
+          <button class="tab-btn tab-active text-xs py-1 px-3">1W</button>
+          <button class="tab-btn tab-inactive text-xs py-1 px-3">1M</button>
+          <button class="tab-btn tab-inactive text-xs py-1 px-3">3M</button>
+          <button class="tab-btn tab-inactive text-xs py-1 px-3">All</button>
+        </div>
+      </div>
+      <div class="flex gap-6 mb-4">
+        <div><div style="color:#8b949e;font-size:11px;">Realized</div><div class="green font-bold">+$2,840</div></div>
+        <div><div style="color:#8b949e;font-size:11px;">Unrealized</div><div class="green font-bold">+$1,420</div></div>
+        <div><div style="color:#8b949e;font-size:11px;">Total</div><div class="green font-bold text-lg">+$4,260</div></div>
+        <div><div style="color:#8b949e;font-size:11px;">of Portfolio</div><div class="green font-bold">+8.1%</div></div>
+      </div>
+      <svg viewBox="0 0 600 160" style="width:100%;height:160px;">
+        <defs>
+          <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3fb950" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#3fb950" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,140 L40,135 L80,128 L120,120 L160,115 L200,105 L240,95 L280,88 L320,75 L360,68 L400,55 L440,50 L480,40 L520,30 L560,20 L600,15" class="sparkline"/>
+        <path d="M0,140 L40,135 L80,128 L120,120 L160,115 L200,105 L240,95 L280,88 L320,75 L360,68 L400,55 L440,50 L480,40 L520,30 L560,20 L600,15 L600,160 L0,160 Z" class="sparkline-area"/>
+        <!-- X axis labels -->
+        <text x="0" y="158" fill="#8b949e" font-size="10">Jan</text>
+        <text x="120" y="158" fill="#8b949e" font-size="10">Feb</text>
+        <text x="240" y="158" fill="#8b949e" font-size="10">Mar</text>
+        <text x="360" y="158" fill="#8b949e" font-size="10">Apr</text>
+        <text x="480" y="158" fill="#8b949e" font-size="10">May</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Open Positions Table -->
+  <div class="card">
+    <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid #30363d;">
+      <h2 class="font-semibold text-white">Open Positions</h2>
+      <div class="flex gap-2">
+        <button class="tab-btn tab-active text-xs py-1 px-3">Active (3)</button>
+        <button class="tab-btn tab-inactive text-xs py-1 px-3">Closing (1)</button>
+        <button class="tab-btn tab-inactive text-xs py-1 px-3">All</button>
+      </div>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr style="border-bottom:1px solid #21262d;color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">
+          <th class="px-5 py-3 text-left">Symbol</th>
+          <th class="px-4 py-3 text-left">Strike / Exp</th>
+          <th class="px-4 py-3 text-right">Contracts</th>
+          <th class="px-4 py-3 text-right">Entry</th>
+          <th class="px-4 py-3 text-right">Current</th>
+          <th class="px-4 py-3 text-right">P&L $</th>
+          <th class="px-4 py-3 text-right">P&L %</th>
+          <th class="px-4 py-3 text-left">Progress</th>
+          <th class="px-4 py-3 text-left">Status</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #21262d;">
+          <td class="px-5 py-3"><div class="font-medium text-white">TSLA</div><div style="color:#8b949e;font-size:11px;">TSLA_250515P310</div></td>
+          <td class="px-4 py-3 text-white">$310 / May 15<div style="color:#8b949e;font-size:11px;">32 DTE</div></td>
+          <td class="px-4 py-3 text-right text-white">1</td>
+          <td class="px-4 py-3 text-right text-white">$6.00</td>
+          <td class="px-4 py-3 text-right text-white">$1.80</td>
+          <td class="px-4 py-3 text-right green font-semibold">+$420.00</td>
+          <td class="px-4 py-3 text-right green font-semibold">+70%</td>
+          <td class="px-4 py-3">
+            <div style="background:#21262d;border-radius:4px;height:6px;width:80px;">
+              <div style="background:#3fb950;width:70%;height:6px;border-radius:4px;"></div>
+            </div>
+            <div style="color:#8b949e;font-size:10px;" class="mt-1">70% → 75% target</div>
+          </td>
+          <td class="px-4 py-3"><span class="badge-green px-2 py-1 rounded text-xs font-medium">OPEN</span></td>
+          <td class="px-4 py-3"><button style="color:#f85149;font-size:12px;" class="hover:underline">Close</button></td>
+        </tr>
+        <tr style="border-bottom:1px solid #21262d;">
+          <td class="px-5 py-3"><div class="font-medium text-white">IREN</div><div style="color:#8b949e;font-size:11px;">IREN_250515P7</div></td>
+          <td class="px-4 py-3 text-white">$7 / May 15<div style="color:#8b949e;font-size:11px;">32 DTE</div></td>
+          <td class="px-4 py-3 text-right text-white">5</td>
+          <td class="px-4 py-3 text-right text-white">$0.17</td>
+          <td class="px-4 py-3 text-right text-white">$0.10</td>
+          <td class="px-4 py-3 text-right green font-semibold">+$85.00</td>
+          <td class="px-4 py-3 text-right green font-semibold">+42%</td>
+          <td class="px-4 py-3">
+            <div style="background:#21262d;border-radius:4px;height:6px;width:80px;">
+              <div style="background:#3fb950;width:42%;height:6px;border-radius:4px;"></div>
+            </div>
+            <div style="color:#8b949e;font-size:10px;" class="mt-1">42% → 75% target</div>
+          </td>
+          <td class="px-4 py-3"><span class="badge-green px-2 py-1 rounded text-xs font-medium">OPEN</span></td>
+          <td class="px-4 py-3"><button style="color:#f85149;font-size:12px;" class="hover:underline">Close</button></td>
+        </tr>
+        <tr>
+          <td class="px-5 py-3"><div class="font-medium text-white">NVDA</div><div style="color:#8b949e;font-size:11px;">NVDA_250515P750</div></td>
+          <td class="px-4 py-3 text-white">$750 / May 15<div style="color:#8b949e;font-size:11px;">32 DTE</div></td>
+          <td class="px-4 py-3 text-right text-white">1</td>
+          <td class="px-4 py-3 text-right text-white">$9.50</td>
+          <td class="px-4 py-3 text-right text-white">$8.20</td>
+          <td class="px-4 py-3 text-right green font-semibold">+$130.00</td>
+          <td class="px-4 py-3 text-right green font-semibold">+14%</td>
+          <td class="px-4 py-3">
+            <div style="background:#21262d;border-radius:4px;height:6px;width:80px;">
+              <div style="background:#d29922;width:14%;height:6px;border-radius:4px;"></div>
+            </div>
+            <div style="color:#8b949e;font-size:10px;" class="mt-1">14% → 75% target</div>
+          </td>
+          <td class="px-4 py-3"><span class="badge-yellow px-2 py-1 rounded text-xs font-medium">CLOSING</span></td>
+          <td class="px-4 py-3"><button style="color:#f85149;font-size:12px;" class="hover:underline">Close</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<style>
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+</style>
+</body>
+</html>

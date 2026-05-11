@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7890", "--directory", "mockups"],
+      "port": 7890
+    },
+    {
+      "name": "frontend-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/chatchaisatienpattanakul/PycharmProjects/fund-manager-agent/frontend && npm run dev -- --port 5176"],
+      "port": 5176
+    }
+  ]
+}

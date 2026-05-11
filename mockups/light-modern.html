@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mock B — Light Modern (Robinhood / Linear style)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f2f5; color: #1a1d2e; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; min-height: 100vh; background: #1a1d2e; position: fixed; top:0; left:0; }
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .nav-item { display:flex; align-items:center; gap:10px; padding: 10px 20px; font-size:14px; font-weight:500; color: rgba(255,255,255,0.5); cursor:pointer; border-radius:0; transition: all 0.15s; }
+  .nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .nav-item.active { color: #fff; background: rgba(99,102,241,0.25); border-left: 3px solid #6366f1; }
+  .nav-item .icon { width:18px; text-align:center; }
+
+  /* Content */
+  .content { margin-left: 220px; min-height: 100vh; padding: 28px 32px; }
+
+  /* Cards */
+  .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04); }
+  .card-sm { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+  /* Stat cards */
+  .stat-card { background: #fff; border-radius: 16px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04); position: relative; overflow: hidden; }
+  .stat-card .bg-blob { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; opacity:0.12; }
+
+  /* Colors */
+  .text-green { color: #10b981; }
+  .text-red { color: #ef4444; }
+  .text-purple { color: #6366f1; }
+  .text-blue { color: #3b82f6; }
+  .text-orange { color: #f59e0b; }
+  .text-muted { color: #6b7280; }
+
+  .badge-green { background: #d1fae5; color: #065f46; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+  .badge-red { background: #fee2e2; color: #991b1b; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+  .badge-yellow { background: #fef3c7; color: #92400e; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+  .badge-blue { background: #dbeafe; color: #1e40af; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+
+  /* Progress bar */
+  .progress-track { height:6px; background: #f3f4f6; border-radius:3px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:3px; transition: width 0.3s; }
+
+  /* Table */
+  table { width:100%; border-collapse: collapse; }
+  th { font-size:11px; font-weight:600; color: #9ca3af; text-transform:uppercase; letter-spacing:0.05em; padding: 10px 12px; text-align:left; border-bottom: 1px solid #f3f4f6; }
+  td { padding: 12px 12px; font-size:13px; border-bottom: 1px solid #f9fafb; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* Chip tag */
+  .chip { display:inline-flex; align-items:center; gap:5px; background:#f3f4f6; border-radius:6px; padding:3px 8px; font-size:12px; font-weight:500; color:#374151; }
+
+  /* Chat */
+  .chat-bubble-user { background: #6366f1; color:#fff; border-radius:16px 16px 4px 16px; padding:10px 14px; font-size:13px; max-width:80%; margin-left:auto; }
+  .chat-bubble-agent { background: #f3f4f6; color:#1a1d2e; border-radius:16px 16px 16px 4px; padding:10px 14px; font-size:13px; max-width:85%; }
+
+  /* Live dot */
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .live-dot { width:8px; height:8px; border-radius:50%; background:#10b981; animation:pulse 2s infinite; display:inline-block; }
+
+  /* Toggle */
+  .toggle { width:36px; height:20px; background:#d1d5db; border-radius:10px; position:relative; cursor:pointer; transition:background 0.2s; }
+  .toggle.on { background: #6366f1; }
+  .toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; transition:transform 0.2s; }
+  .toggle.on::after { transform:translateX(16px); }
+
+  /* Button */
+  .btn-primary { background: #6366f1; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .btn-primary:hover { background:#5254cc; }
+  .btn-ghost { background: #f3f4f6; color:#374151; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:500; cursor:pointer; }
+
+  /* Chart area */
+  .chart-container { position:relative; height:160px; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo flex items-center gap-3">
+    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">FM</div>
+    <div>
+      <div style="color:#fff;font-weight:700;font-size:15px;">FundManager</div>
+      <div style="color:rgba(255,255,255,0.35);font-size:11px;">Auto Sell-Puts</div>
+    </div>
+  </div>
+
+  <div style="padding:16px 0;">
+    <div style="padding:6px 20px 8px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.25);letter-spacing:0.08em;">OVERVIEW</div>
+    <div class="nav-item active"><span class="icon">⊞</span> Dashboard</div>
+    <div class="nav-item"><span class="icon">📊</span> Account</div>
+
+    <div style="padding:14px 20px 8px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.25);letter-spacing:0.08em;margin-top:4px;">TRADING</div>
+    <div class="nav-item"><span class="icon">📋</span> Positions</div>
+    <div class="nav-item"><span class="icon">📜</span> Orders</div>
+    <div class="nav-item"><span class="icon">⚙️</span> Rules</div>
+
+    <div style="padding:14px 20px 8px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.25);letter-spacing:0.08em;margin-top:4px;">INSIGHTS</div>
+    <div class="nav-item"><span class="icon">📈</span> Performance</div>
+    <div class="nav-item"><span class="icon">🤖</span> Agent Chat</div>
+  </div>
+
+  <!-- Status bar at bottom -->
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.07);">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="live-dot"></span>
+      <span style="color:rgba(255,255,255,0.5);font-size:12px;">Market Open</span>
+    </div>
+    <div style="color:rgba(255,255,255,0.25);font-size:11px;margin-top:2px;">Last sync 12s ago</div>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<div class="content">
+
+  <!-- Top bar -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 style="font-size:22px;font-weight:800;color:#1a1d2e;margin:0;">Good morning, Trader 👋</h1>
+      <p style="color:#6b7280;font-size:13px;margin:2px 0 0;">Saturday, April 12, 2026 · Auto-trading active</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button class="btn-ghost">⟳ Sync</button>
+      <button class="btn-primary">+ New Rule</button>
+    </div>
+  </div>
+
+  <!-- Portfolio stat cards (row of 4) -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <!-- Total Portfolio -->
+    <div class="stat-card">
+      <div class="bg-blob" style="background:#6366f1;"></div>
+      <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Portfolio Value</div>
+      <div style="font-size:26px;font-weight:800;color:#1a1d2e;margin:6px 0 2px;">$52,340</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="badge-green">▲ +$420 today</span>
+      </div>
+    </div>
+
+    <!-- Day P&L -->
+    <div class="stat-card">
+      <div class="bg-blob" style="background:#10b981;"></div>
+      <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Day P&L</div>
+      <div style="font-size:26px;font-weight:800;color:#10b981;margin:6px 0 2px;">+$420.50</div>
+      <div style="font-size:12px;color:#6b7280;">Month: <span style="color:#10b981;font-weight:600;">+$2,840</span></div>
+    </div>
+
+    <!-- Buying Power -->
+    <div class="stat-card">
+      <div class="bg-blob" style="background:#3b82f6;"></div>
+      <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Buying Power</div>
+      <div style="font-size:26px;font-weight:800;color:#1a1d2e;margin:6px 0 2px;">$24,200</div>
+      <div class="progress-track" style="margin-top:8px;">
+        <div class="progress-fill" style="width:46%;background:linear-gradient(90deg,#3b82f6,#6366f1);"></div>
+      </div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:4px;">46% utilized</div>
+    </div>
+
+    <!-- Open Positions -->
+    <div class="stat-card">
+      <div class="bg-blob" style="background:#f59e0b;"></div>
+      <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Open Positions</div>
+      <div style="font-size:26px;font-weight:800;color:#1a1d2e;margin:6px 0 2px;">4 <span style="font-size:14px;color:#6b7280;font-weight:500;">contracts</span></div>
+      <div style="font-size:12px;color:#6b7280;">Unrealized: <span style="color:#10b981;font-weight:600;">+$1,230</span></div>
+    </div>
+  </div>
+
+  <!-- Row: Chart + Account Holdings -->
+  <div class="grid grid-cols-5 gap-4 mb-6">
+
+    <!-- P&L Chart (3/5 width) -->
+    <div class="card col-span-3">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#1a1d2e;">Cumulative P&L</div>
+          <div style="font-size:12px;color:#6b7280;">Premium income over time</div>
+        </div>
+        <div class="flex gap-1">
+          <button class="btn-ghost" style="padding:5px 12px;font-size:12px;background:#ede9fe;color:#6366f1;">1W</button>
+          <button class="btn-ghost" style="padding:5px 12px;font-size:12px;">1M</button>
+          <button class="btn-ghost" style="padding:5px 12px;font-size:12px;">3M</button>
+          <button class="btn-ghost" style="padding:5px 12px;font-size:12px;">All</button>
+        </div>
+      </div>
+      <!-- SVG Chart -->
+      <div style="padding: 0 4px;">
+        <svg viewBox="0 0 560 140" style="width:100%;height:140px;" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="purpleGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="0" y1="35" x2="560" y2="35" stroke="#f3f4f6" stroke-width="1"/>
+          <line x1="0" y1="70" x2="560" y2="70" stroke="#f3f4f6" stroke-width="1"/>
+          <line x1="0" y1="105" x2="560" y2="105" stroke="#f3f4f6" stroke-width="1"/>
+          <!-- Labels -->
+          <text x="0" y="33" fill="#d1d5db" font-size="9" font-family="Inter">$3k</text>
+          <text x="0" y="68" fill="#d1d5db" font-size="9" font-family="Inter">$2k</text>
+          <text x="0" y="103" fill="#d1d5db" font-size="9" font-family="Inter">$1k</text>
+          <!-- Area fill -->
+          <path d="M20,115 C40,115 50,108 70,102 C90,96 100,88 120,80 C140,72 155,78 175,72 C195,66 205,55 225,48 C245,41 260,50 280,44 C300,38 315,32 335,26 C355,20 370,30 390,24 C410,18 425,22 445,16 C465,10 480,20 500,14 C520,8 535,18 555,12 L555,130 L20,130 Z" fill="url(#purpleGrad)"/>
+          <!-- Line -->
+          <path d="M20,115 C40,115 50,108 70,102 C90,96 100,88 120,80 C140,72 155,78 175,72 C195,66 205,55 225,48 C245,41 260,50 280,44 C300,38 315,32 335,26 C355,20 370,30 390,24 C410,18 425,22 445,16 C465,10 480,20 500,14 C520,8 535,18 555,12" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Current dot -->
+          <circle cx="555" cy="12" r="4" fill="#6366f1"/>
+          <circle cx="555" cy="12" r="8" fill="#6366f1" opacity="0.2"/>
+          <!-- X Labels -->
+          <text x="18" y="138" fill="#d1d5db" font-size="9" font-family="Inter">Apr 5</text>
+          <text x="115" y="138" fill="#d1d5db" font-size="9" font-family="Inter">Apr 7</text>
+          <text x="215" y="138" fill="#d1d5db" font-size="9" font-family="Inter">Apr 8</text>
+          <text x="315" y="138" fill="#d1d5db" font-size="9" font-family="Inter">Apr 10</text>
+          <text x="415" y="138" fill="#d1d5db" font-size="9" font-family="Inter">Apr 11</text>
+          <text x="515" y="138" fill="#d1d5db" font-size="9" font-family="Inter">Apr 12</text>
+        </svg>
+      </div>
+      <!-- Summary row -->
+      <div class="grid grid-cols-3 gap-3 mt-3" style="border-top:1px solid #f3f4f6;padding-top:14px;">
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;">This Week</div>
+          <div style="font-size:16px;font-weight:700;color:#10b981;">+$840</div>
+        </div>
+        <div style="text-align:center;border-left:1px solid #f3f4f6;border-right:1px solid #f3f4f6;">
+          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;">This Month</div>
+          <div style="font-size:16px;font-weight:700;color:#10b981;">+$2,840</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;">Win Rate</div>
+          <div style="font-size:16px;font-weight:700;color:#1a1d2e;">87%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account Holdings (2/5 width) -->
+    <div class="card col-span-2" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px 12px;border-bottom:1px solid #f3f4f6;">
+        <div style="font-size:15px;font-weight:700;color:#1a1d2e;">Account Holdings</div>
+        <div style="font-size:12px;color:#6b7280;">Schwab · IRA ···4821</div>
+      </div>
+
+      <!-- Equity Holdings -->
+      <div style="padding:12px 20px 8px;">
+        <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Equities</div>
+
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-10px" style="gap:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#92400e;">TSLA</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1d2e;">Tesla Inc.</div>
+              <div style="font-size:11px;color:#9ca3af;">10 shares · $351.20</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#1a1d2e;">$3,512</div>
+            <div style="font-size:11px;color:#10b981;font-weight:500;">+2.3%</div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center" style="gap:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1e40af;">IREN</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1d2e;">Iris Energy</div>
+              <div style="font-size:11px;color:#9ca3af;">50 shares · $12.40</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#1a1d2e;">$620</div>
+            <div style="font-size:11px;color:#ef4444;font-weight:500;">-1.2%</div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex items-center" style="gap:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#065f46;">HIM</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1d2e;">Himari Global</div>
+              <div style="font-size:11px;color:#9ca3af;">100 shares · $8.75</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#1a1d2e;">$875</div>
+            <div style="font-size:11px;color:#10b981;font-weight:500;">+4.7%</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #f3f4f6;margin:8px 0;"></div>
+
+      <!-- Short Puts -->
+      <div style="padding:8px 20px 16px;">
+        <div style="font-size:10px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Short Puts</div>
+
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#1a1d2e;">TSLA 310P May15</div>
+            <div style="font-size:11px;color:#9ca3af;">–1 contract · entry $6.00</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#10b981;">+$255</div>
+            <span class="badge-green">42.5%</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#1a1d2e;">IREN 10P May22</div>
+            <div style="font-size:11px;color:#9ca3af;">–3 contracts · entry $0.18</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#10b981;">+$27</div>
+            <span class="badge-green">50%</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#1a1d2e;">HIM 7.5P Apr25</div>
+            <div style="font-size:11px;color:#9ca3af;">–5 contracts · entry $0.12</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#ef4444;">-$15</div>
+            <span class="badge-red">-25%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row: Open Positions + Rules + Agent Chat -->
+  <div class="grid grid-cols-5 gap-4">
+
+    <!-- Open Positions table (3/5) -->
+    <div class="card col-span-3" style="padding:0;overflow:hidden;">
+      <div class="flex items-center justify-between" style="padding:16px 20px;border-bottom:1px solid #f3f4f6;">
+        <div style="font-size:15px;font-weight:700;color:#1a1d2e;">Open Positions</div>
+        <span class="badge-purple">4 active</span>
+      </div>
+      <table>
+        <thead>
+          <tr style="background:#fafafa;">
+            <th>Contract</th>
+            <th>Entry</th>
+            <th>Current</th>
+            <th>Progress</th>
+            <th>P&L</th>
+            <th>DTE</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div style="font-weight:600;font-size:13px;">TSLA 310P</div>
+              <div style="font-size:11px;color:#9ca3af;">May 15 · –1 ct</div>
+            </td>
+            <td style="font-size:13px;font-weight:500;">$6.00</td>
+            <td style="font-size:13px;font-weight:500;">$3.45</td>
+            <td style="width:100px;">
+              <div class="progress-track">
+                <div class="progress-fill" style="width:42%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+              </div>
+              <div style="font-size:10px;color:#10b981;margin-top:2px;font-weight:600;">42% → 75%</div>
+            </td>
+            <td><span style="color:#10b981;font-weight:700;font-size:13px;">+$255</span></td>
+            <td><span class="chip">33d</span></td>
+            <td><button class="btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444;">Close</button></td>
+          </tr>
+          <tr>
+            <td>
+              <div style="font-weight:600;font-size:13px;">IREN 10P</div>
+              <div style="font-size:11px;color:#9ca3af;">May 22 · –3 ct</div>
+            </td>
+            <td style="font-size:13px;font-weight:500;">$0.18</td>
+            <td style="font-size:13px;font-weight:500;">$0.09</td>
+            <td style="width:100px;">
+              <div class="progress-track">
+                <div class="progress-fill" style="width:50%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+              </div>
+              <div style="font-size:10px;color:#10b981;margin-top:2px;font-weight:600;">50% → 75%</div>
+            </td>
+            <td><span style="color:#10b981;font-weight:700;font-size:13px;">+$27</span></td>
+            <td><span class="chip">40d</span></td>
+            <td><button class="btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444;">Close</button></td>
+          </tr>
+          <tr>
+            <td>
+              <div style="font-weight:600;font-size:13px;">HIM 7.5P</div>
+              <div style="font-size:11px;color:#9ca3af;">Apr 25 · –5 ct</div>
+            </td>
+            <td style="font-size:13px;font-weight:500;">$0.12</td>
+            <td style="font-size:13px;font-weight:500;">$0.15</td>
+            <td style="width:100px;">
+              <div class="progress-track">
+                <div class="progress-fill" style="width:0%;background:#ef4444;"></div>
+              </div>
+              <div style="font-size:10px;color:#ef4444;margin-top:2px;font-weight:600;">-25% ▼</div>
+            </td>
+            <td><span style="color:#ef4444;font-weight:700;font-size:13px;">-$15</span></td>
+            <td><span class="chip" style="background:#fee2e2;color:#991b1b;">13d</span></td>
+            <td><button class="btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444;">Close</button></td>
+          </tr>
+          <tr>
+            <td>
+              <div style="font-weight:600;font-size:13px;">TSLA 295P</div>
+              <div style="font-size:11px;color:#9ca3af;">May 15 · –1 ct</div>
+            </td>
+            <td style="font-size:13px;font-weight:500;">$4.80</td>
+            <td style="font-size:13px;font-weight:500;">$3.20</td>
+            <td style="width:100px;">
+              <div class="progress-track">
+                <div class="progress-fill" style="width:33%;background:linear-gradient(90deg,#f59e0b,#fbbf24);"></div>
+              </div>
+              <div style="font-size:10px;color:#f59e0b;margin-top:2px;font-weight:600;">33% → 75%</div>
+            </td>
+            <td><span style="color:#10b981;font-weight:700;font-size:13px;">+$160</span></td>
+            <td><span class="chip">33d</span></td>
+            <td><button class="btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444;">Close</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Right column: Rules + Agent Chat (2/5) -->
+    <div class="col-span-2 flex flex-col gap-4">
+
+      <!-- Active Rules -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="flex items-center justify-between" style="padding:14px 18px;border-bottom:1px solid #f3f4f6;">
+          <div style="font-size:14px;font-weight:700;color:#1a1d2e;">Active Rules</div>
+          <button class="btn-primary" style="padding:5px 12px;font-size:12px;">+ Add</button>
+        </div>
+        <div style="padding:12px 18px;" class="space-y-3">
+
+          <div class="flex items-center justify-between">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1d2e;">Tech Wheel</div>
+              <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                <span class="badge-blue">TSLA</span>
+                <span class="badge-blue">IREN</span>
+                <span class="badge-yellow">1-2% prem</span>
+              </div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+
+          <div style="height:1px;background:#f3f4f6;"></div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1d2e;">Dip Catcher</div>
+              <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                <span class="badge-purple">HIM</span>
+                <span class="badge-yellow">3% drop</span>
+              </div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+
+          <div style="height:1px;background:#f3f4f6;"></div>
+
+          <div class="flex items-center justify-between" style="opacity:0.5;">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1d2e;">High Vol Play</div>
+              <div style="display:flex;gap:4px;margin-top:3px;">
+                <span class="badge-blue">NVDA</span>
+                <span class="badge-yellow">IV Rank ≥60</span>
+              </div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Chat -->
+      <div class="card" style="padding:0;overflow:hidden;flex:1;min-height:280px;">
+        <div style="padding:14px 18px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;">🤖</div>
+            <span style="font-size:14px;font-weight:700;color:#1a1d2e;">Agent Chat</span>
+          </div>
+          <span class="badge-green">Online</span>
+        </div>
+
+        <!-- Messages -->
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-height:180px;">
+          <div class="chat-bubble-agent">
+            I'm monitoring <strong>4 positions</strong>. TSLA 310P is at 42% profit — I'll place a GTC order when it hits 60%. Anything you'd like to adjust?
+          </div>
+          <div class="chat-bubble-user">
+            Show me all TSLA positions
+          </div>
+          <div class="chat-bubble-agent">
+            You have 2 open TSLA puts:<br>
+            • 310P May15 → +42.5% (+$255)<br>
+            • 295P May15 → +33.3% (+$160)
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div style="padding:10px 14px;border-top:1px solid #f3f4f6;display:flex;gap:8px;align-items:center;">
+          <input style="flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;font-size:13px;outline:none;font-family:inherit;color:#1a1d2e;" placeholder="Ask Agent..." />
+          <button class="btn-primary" style="padding:8px 14px;">↑</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<style>
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+</style>
+</body>
+</html>
