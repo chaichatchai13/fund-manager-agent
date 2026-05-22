@@ -1,0 +1,43 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# Secrets — never bake into the image
+.env
+schwab_token.json
+
+# Frontend source — dist is copied from the builder stage
+frontend/node_modules/
+frontend/dist/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Dev / CI
+.pytest_cache/
+.ruff_cache/
+tests/
+mockups/
+*.log
+
+# Docker files themselves (entrypoint IS needed in the build context)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# macOS
+.DS_Store
+
+# TLS certs (local dev only)
+cert.pem
+key.pem

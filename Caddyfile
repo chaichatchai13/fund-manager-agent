@@ -1,0 +1,7 @@
+{$THETAFLOW_DOMAIN} {
+    # Gzip all responses
+    encode gzip
+
+    # Proxy everything to FastAPI (Caddy handles WebSocket upgrades automatically)
+    reverse_proxy app:8000
+}

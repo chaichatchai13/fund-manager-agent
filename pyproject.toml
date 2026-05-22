@@ -23,6 +23,8 @@ structlog = "^25.3"
 tenacity = "^9.1"
 asyncpg = "^0.31.0"
 greenlet = "^3.2"
+pyjwt = ">=2.8"
+passlib = {version = ">=1.7", extras = ["bcrypt"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2"

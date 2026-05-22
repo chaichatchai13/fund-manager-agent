@@ -21,7 +21,15 @@ _connected_clients: set[WebSocket] = set()
 
 @router.websocket("/ws/dashboard")
 async def dashboard_ws(websocket: WebSocket):
+    # Accept the HTTP upgrade first, then verify auth.
+    # Closing before accept() causes FastAPI to return 403 instead of our custom code.
     await websocket.accept()
+
+    from app.auth.security import COOKIE_NAME, decode_token
+    token = websocket.cookies.get(COOKIE_NAME)
+    if not token or not decode_token(token):
+        await websocket.close(code=4001)  # 4001 = Unauthorized
+        return
     _connected_clients.add(websocket)
     logger.info("WebSocket client connected", total=len(_connected_clients))
 

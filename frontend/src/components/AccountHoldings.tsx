@@ -45,12 +45,6 @@ export function AccountHoldings() {
   const fmtVal = (n: number | null | undefined) =>
     n == null ? '—' : `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-  const dayColor = (pct: number | null | undefined) => {
-    if (pct == null) return '#8b949e'
-    return pct >= 0 ? '#3fb950' : '#f85149'
-  }
-  const dayArrow = (pct: number | null | undefined) => pct == null ? '' : pct >= 0 ? '▲' : '▼'
-
   const sectionLabel: React.CSSProperties = {
     color: '#8b949e', fontSize: 11, textTransform: 'uppercase',
     letterSpacing: '0.05em', marginBottom: 8,

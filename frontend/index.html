@@ -2,9 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ThetaFlow — Automate Your Premium Income</title>
+
+    <!-- Viewport: fills the full iPhone screen, no pinch-zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <title>ThetaFlow</title>
     <link rel="icon" type="image/svg+xml" href="/theta-icon.svg" />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- iOS "Add to Home Screen" — fullscreen, no Safari chrome -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ThetaFlow" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+
+    <!-- Android Chrome theme colour -->
+    <meta name="theme-color" content="#0d1117" />
+
+    <!-- Prevent phone number detection styling -->
+    <meta name="format-detection" content="telephone=no" />
   </head>
   <body>
     <div id="root"></div>

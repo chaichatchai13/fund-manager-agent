@@ -1,0 +1,58 @@
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-thetaflow}
+      POSTGRES_USER: ${DB_USER:-thetaflow}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-thetaflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── ThetaFlow backend ───────────────────────────────────────────────────────
+  app:
+    build: .
+    env_file: .env
+    environment:
+      # Override DB_HOST so it points to the postgres service on the Docker network
+      DB_HOST: db
+    ports:
+      # Expose directly for local network access (iPhone on same WiFi).
+      # In production behind Caddy, Caddy proxies to app:8000 internally — this is harmless.
+      - "8000:8000"
+    volumes:
+      # Schwab token is a runtime secret — mounted from host, persisted across rebuilds
+      - ./schwab_token.json:/app/schwab_token.json:rw
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Caddy (HTTPS reverse proxy) ─────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    environment:
+      THETAFLOW_DOMAIN: ${THETAFLOW_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data          # TLS certificates (persisted)
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

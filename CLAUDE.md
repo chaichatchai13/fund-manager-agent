@@ -1,8 +1,87 @@
 # ThetaFlow — Claude Code Guide
 
 Automated sell-puts / covered-call wheel trading system on top of the Schwab API.
-Backend: FastAPI + SQLAlchemy async (SQLite dev). Frontend: React + Vite + TypeScript.
+Backend: FastAPI + SQLAlchemy async + PostgreSQL. Frontend: React + Vite + TypeScript.
 Agent interface: Claude claude-sonnet-4-6 with tool-use loop.
+
+---
+
+## Production Deployment Roadmap
+
+Work through these phases in order. Each phase has a clear deliverable before moving on.
+
+| Phase | What it delivers | Status |
+|---|---|---|
+| **1 — Containerise** | `docker compose up` runs full stack (backend + PostgreSQL + Caddy) | ✅ Done |
+| **2 — Auth layer** | Login screen + JWT middleware — app protected before going public | ✅ Done |
+| **3 — Schwab connection UI** | Reconnect Schwab from browser, no SSH needed | ✅ Done |
+| **4 — PWA** | ThetaFlow icon on iPhone home screen, fullscreen app feel | ✅ Done |
+| **5 — GCP deploy** | Live at `https://yourdomain.com`, accessible from phone anywhere | ✅ Done |
+
+### Phase 1 — Containerise ✅
+Files created: `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `docker-entrypoint.sh`, `.env.example`, `.dockerignore`
+
+Key decisions made:
+- Multi-stage Docker build: Node 20 builds React frontend, Python 3.12-slim runs backend
+- Dependencies installed via `poetry export` → `pip install` (no venv inside container)
+- `docker-entrypoint.sh` detects fresh vs existing DB: fresh → `create_tables()` + `alembic stamp head`; existing → `alembic upgrade head`
+- Caddy handles automatic HTTPS via Let's Encrypt using `THETAFLOW_DOMAIN` env var
+- `schwab_token.json` bind-mounted from host (runtime secret, never baked into image)
+
+To run locally:
+```bash
+cp .env.example .env          # fill in SCHWAB_*, ANTHROPIC_API_KEY, DB_PASS
+# Set THETAFLOW_DOMAIN=localhost in .env for local testing
+docker compose up --build
+```
+
+### Phase 2 — Auth Layer ⬜
+Plan:
+- `POST /auth/login` — verify `THETAFLOW_PASSWORD` env var (bcrypt), set JWT in HttpOnly cookie (7-day expiry)
+- `POST /auth/logout` — clear cookie
+- `GET /auth/me` — return current user info
+- FastAPI middleware — validates JWT on all `/api/*` and `/ws/*` routes; returns 401 if missing/expired
+- React login page — shown when 401 received; redirects back to original URL after login
+- Designed for single user now; adding a `users` table later enables multi-user without breaking changes
+
+### Phase 3 — Schwab Connection UI ✅
+Files created/changed: `app/models/schwab_token.py`, `app/schwab/token_store.py`, `alembic/versions/005_schwab_tokens.py`, `app/api/routes/schwab.py`, `app/schwab/client.py`, `frontend/src/components/SettingsPanel.tsx`
+
+Key decisions:
+- `schwab_tokens` table stores one row (id=1) with Fernet-encrypted token JSON
+- Fernet key derived from `SECRET_KEY` via SHA-256 — no extra env var needed
+- On startup: if token file exists → seed DB from file; if only DB → write file → init schwab-py
+- Token format: `{"creation_timestamp": <unix>, "token": {...oauth fields...}}` — matches schwab-py
+- OAuth endpoints on `/api/schwab/*` (not `/auth/schwab/*`) — `/callback` and `/connect` are public paths
+- Settings tab in frontend: shows connection state, token expiry warnings, Reconnect/Refresh/Reinitialize buttons
+- `SCHWAB_CALLBACK_URL` in `.env` must be updated to `https://yourdomain.com/api/schwab/callback` and registered in Schwab developer app before OAuth flow works
+
+### Phase 4 — PWA ✅
+Files: `frontend/public/manifest.json`, `frontend/public/icon-192.png`, `frontend/public/icon-512.png`, `frontend/public/icon-180.png`, `frontend/index.html`, `frontend/src/index.css`
+
+- Icons generated via Pillow (gradient blue→green background + theta symbol), 512/192/180px
+- `manifest.json`: `display: standalone`, `theme_color: #0d1117`, both icon sizes listed
+- `index.html`: manifest link, `apple-mobile-web-app-capable`, `apple-touch-icon`, `theme-color`, `viewport-fit=cover`
+- `index.css`: `env(safe-area-inset-*)` padding so content clears iPhone notch/Dynamic Island
+- To install: Safari → Share → Add to Home Screen → ThetaFlow appears as fullscreen app
+
+### Phase 5 — GCP Deploy ✅
+Files: `deploy/setup-vm.sh`, `deploy/thetaflow.service`
+
+Step-by-step:
+1. **GCP VM**: e2-small, Debian 12, us-central1. In GCP Console → Compute Engine → VM Instances → Create.
+2. **Static IP**: VPC Network → IP Addresses → Reserve external static IP → attach to VM.
+3. **Firewall**: VPC Network → Firewall → allow ingress tcp:80,443 from 0.0.0.0/0 (tags: `http-server`, `https-server`).
+4. **Domain**: Buy at Namecheap/Cloudflare. Add DNS A record → VM static IP. TTL 300.
+5. **SSH into VM**: `gcloud compute ssh INSTANCE_NAME --zone=ZONE`
+6. **Run setup script**: `curl -fsSL https://raw.githubusercontent.com/chaichatchai13/fund-manager-agent/main/deploy/setup-vm.sh | bash`
+7. **Edit .env**: `nano /opt/thetaflow/.env` — fill in all secrets, set `THETAFLOW_DOMAIN=yourdomain.com`, `ENVIRONMENT=production`
+8. **Update Schwab callback**: In Schwab developer app settings, set callback URL to `https://yourdomain.com/api/schwab/callback`
+9. **Re-run setup**: `bash /opt/thetaflow/deploy/setup-vm.sh` — installs systemd service, starts app
+10. **First HTTPS request**: Caddy auto-issues Let's Encrypt cert on first browser visit
+11. **Connect Schwab**: Settings tab → Reconnect via Schwab OAuth
+
+Auto-restart: `systemd` service (`deploy/thetaflow.service`) starts Docker Compose on boot and restarts on crash.
 
 ---
 
@@ -99,8 +178,9 @@ content_dicts = [block.model_dump() for block in response.content]
 
 ## Database & Migrations
 
-- **SQLite in dev** (file: `thetaflow.db`). PostgreSQL-ready via `DATABASE_URL` env var.
-- **Always use `batch_alter_table`** in Alembic migrations — SQLite does not support `ALTER COLUMN` directly:
+- **PostgreSQL everywhere** — local dev uses `docker compose up`, production uses GCP VM. No SQLite.
+- DB connection built from `DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASS` env vars (see `app/config.py`).
+- **Always use `batch_alter_table`** in Alembic migrations for cross-DB compatibility:
 ```python
 def upgrade() -> None:
     with op.batch_alter_table('sell_put_rules') as batch_op:
@@ -108,6 +188,7 @@ def upgrade() -> None:
 ```
 - Migration chain: `base → 002_strategy_type → 003_premium_and_sizing_modes → 004_itm_roll_columns (head)`
 - After adding a column to an ORM model, always create a migration — don't rely on `create_all`.
+- Fresh DB detection: `docker-entrypoint.sh` checks for `alembic_version` table — if missing, runs `create_tables()` then `alembic stamp head` instead of `alembic upgrade head`.
 
 ---
 

@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import type { OptionPosition } from './types'
 import { ChatPane } from './components/ChatPane'
+import { LoginPage } from './components/LoginPage'
 import { PnlChart } from './components/PnlChart'
 import { PositionsTable } from './components/PositionsTable'
 import { RulesPanel } from './components/RulesPanel'
 import { AccountHoldings } from './components/AccountHoldings'
+import { SettingsPanel } from './components/SettingsPanel'
 import { ThetaFlowLogo } from './components/ThetaFlowLogo'
+import { useAuth } from './hooks/useAuth'
 import { useWebSocket } from './hooks/useWebSocket'
 import type { PerformanceSummary } from './types'
 
-type Tab = 'dashboard' | 'positions' | 'rules' | 'chat'
+type Tab = 'dashboard' | 'positions' | 'rules' | 'chat' | 'settings'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const BG = '#0d1117'
@@ -21,6 +24,18 @@ const RED = '#f85149'
 const BLUE_BTN = '#1f6feb'
 
 export default function App() {
+  const { authenticated, loading: authLoading, recheck, logout } = useAuth()
+
+  // Show nothing while checking auth (avoids flash of login page on hard refresh)
+  if (authLoading) return null
+
+  // Show login page if not authenticated — main app not rendered (no API calls fire)
+  if (!authenticated) return <LoginPage onLogin={recheck} />
+
+  return <Dashboard logout={logout} />
+}
+
+function Dashboard({ logout }: { logout: () => void }) {
   const [tab, setTab] = useState<Tab>('dashboard')
   const { positions, connected, setPositions } = useWebSocket()
   const [summary, setSummary] = useState<PerformanceSummary | null>(null)
@@ -91,6 +106,7 @@ export default function App() {
     { id: 'positions', label: `Positions (${openPositions.length})` },
     { id: 'rules', label: 'Rules' },
     { id: 'chat', label: 'Agent Chat' },
+    { id: 'settings', label: 'Settings' },
   ]
 
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
@@ -157,6 +173,18 @@ export default function App() {
             display: 'inline-block',
             animation: connected ? 'pulse 2s infinite' : 'none',
           }} />
+          <button
+            onClick={logout}
+            style={{
+              background: 'none', border: '1px solid #30363d', borderRadius: 6,
+              color: '#8b949e', fontSize: 12, padding: '4px 10px',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#e6edf3')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#8b949e')}
+          >
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -213,6 +241,9 @@ export default function App() {
 
         {/* ── CHAT ── */}
         {tab === 'chat' && <ChatPane />}
+
+        {/* ── SETTINGS ── */}
+        {tab === 'settings' && <SettingsPanel />}
 
       </main>
     </div>

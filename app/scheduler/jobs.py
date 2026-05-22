@@ -35,8 +35,13 @@ def is_market_open() -> bool:
     return market_open <= now < market_close
 
 
+def _schwab_connected() -> bool:
+    from app.schwab.client import schwab_client
+    return schwab_client.is_connected
+
+
 async def scan_job() -> None:
-    if not is_market_open():
+    if not is_market_open() or not _schwab_connected():
         return
     logger.info("Running scan job")
     from app.services.scan_service import scan_service
@@ -50,7 +55,7 @@ async def scan_job() -> None:
 
 
 async def profit_check_job() -> None:
-    if not is_market_open():
+    if not is_market_open() or not _schwab_connected():
         return
     from app.schwab.stream_manager import stream_manager
     from app.services.profit_manager import profit_manager
@@ -109,7 +114,7 @@ async def roll_check_job() -> None:
     Check all OPEN positions for ITM roll candidates.
     Runs every 15 min during market hours (rolling is only meaningful while the market is open).
     """
-    if not is_market_open():
+    if not is_market_open() or not _schwab_connected():
         return
     from app.schwab.stream_manager import stream_manager
     from app.services.roll_manager import roll_manager

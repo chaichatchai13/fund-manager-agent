@@ -20,8 +20,18 @@ class Settings(BaseSettings):
     db_user: str = "postgres"
     db_pass: str = ""
 
+    # Domain — mirrors THETAFLOW_DOMAIN in Caddyfile; used to determine secure cookie flag
+    thetaflow_domain: str = "localhost"
+
     # Feature flags
     mock_schwab: bool = False
+
+    # Auth
+    # Plain text password OR bcrypt hash (starts with $2b$). Both accepted.
+    thetaflow_password: str = ""
+    # Used to sign JWTs — generate a strong random value for production:
+    #   python -c "import secrets; print(secrets.token_hex(32))"
+    secret_key: str = "dev-secret-change-in-production"
 
     # App
     log_level: str = "INFO"

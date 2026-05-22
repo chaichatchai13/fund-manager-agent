@@ -44,42 +44,122 @@ class SchwabClient:
         self._client = None
         self._account_hash: str | None = None
         self._rate_limiter = _RateLimiter(_RATE_LIMIT_REQUESTS, _RATE_LIMIT_PERIOD)
+        self._connected: bool = False
+        self._auth_error: str | None = None
+
+    @property
+    def is_connected(self) -> bool:
+        return self._connected
+
+    @property
+    def auth_error(self) -> str | None:
+        return self._auth_error
+
+    def connection_status(self) -> dict:
+        """Return a dict describing the current Schwab connection state."""
+        import os
+        token_path = settings.schwab_token_path
+        token_exists = os.path.exists(token_path)
+
+        # Try to read token expiry from the token file
+        token_expiry: str | None = None
+        refresh_token_expiry: str | None = None
+        if token_exists:
+            try:
+                import json
+                from datetime import datetime, timezone
+                with open(token_path) as f:
+                    token_data = json.load(f)
+                inner = token_data.get("token", token_data)
+                expires_at = inner.get("expires_at")
+                if expires_at:
+                    dt = datetime.fromtimestamp(float(expires_at), tz=timezone.utc)
+                    token_expiry = dt.isoformat()
+                # Schwab refresh tokens last 7 days from creation_timestamp
+                creation = token_data.get("creation_timestamp")
+                if creation:
+                    refresh_dt = datetime.fromtimestamp(float(creation) + 7 * 86400, tz=timezone.utc)
+                    refresh_token_expiry = refresh_dt.isoformat()
+            except Exception:
+                pass
+
+        return {
+            "connected": self._connected,
+            "mock_mode": settings.mock_schwab,
+            "token_file_exists": token_exists,
+            "token_expiry": token_expiry,
+            "refresh_token_expiry": refresh_token_expiry,
+            "error": self._auth_error,
+            "account_hash_preview": (self._account_hash[:8] + "***") if self._account_hash else None,
+        }
 
     async def initialize(self) -> None:
         if settings.mock_schwab:
             logger.info("Mock Schwab mode — skipping real authentication")
             self._account_hash = "MOCK_ACCOUNT_HASH"
+            self._connected = True
             return
 
         import os
         import schwab
+        from app.schwab.token_store import save_token_file_to_db, write_token_db_to_file
 
         token_path = settings.schwab_token_path
-        if not os.path.exists(token_path):
-            raise RuntimeError(
-                f"Schwab token file not found at '{token_path}'.\n"
-                "Run the one-time auth setup first:\n\n"
-                "    poetry run python setup_schwab_auth.py\n"
+
+        # 1. If token file exists but nothing in DB yet → seed DB from file
+        if os.path.exists(token_path):
+            try:
+                await save_token_file_to_db(token_path)
+            except Exception:
+                pass  # non-fatal; file-based fallback still works
+
+        # 2. If DB has a token → write it to file (keeps file fresh after GCP deploy)
+        else:
+            written = await write_token_db_to_file(token_path)
+            if not written:
+                self._auth_error = (
+                    "No Schwab token found. Use the Settings page to connect your Schwab account."
+                )
+                logger.warning("No Schwab token in file or DB — starting disconnected")
+                return
+
+        try:
+            # Load from token file — schwab-py handles refresh automatically
+            self._client = await asyncio.to_thread(
+                schwab.auth.client_from_token_file,
+                token_path,
+                settings.schwab_app_key,
+                settings.schwab_app_secret,
             )
 
-        # Load from saved token file — no browser interaction needed
-        self._client = await asyncio.to_thread(
-            schwab.auth.client_from_token_file,
-            token_path,
-            settings.schwab_app_key,
-            settings.schwab_app_secret,
-        )
+            # Fetch account hash (this triggers the token refresh if needed)
+            response = await asyncio.to_thread(self._client.get_account_numbers)
+            accounts = response.json()
+            self._account_hash = accounts[0]["hashValue"]
+            self._connected = True
+            self._auth_error = None
+            logger.info("Schwab client initialized", account_hash=self._account_hash[:8] + "***")
 
-        # Fetch account hash
-        response = await asyncio.to_thread(self._client.get_account_numbers)
-        accounts = response.json()
-        self._account_hash = accounts[0]["hashValue"]
-        logger.info("Schwab client initialized", account_hash=self._account_hash[:8] + "***")
+            # Persist the (possibly refreshed) token back to DB
+            try:
+                await save_token_file_to_db(token_path)
+            except Exception:
+                pass
+
+        except Exception as exc:
+            self._client = None
+            self._connected = False
+            self._auth_error = str(exc)
+            logger.warning(
+                "Schwab authentication failed — app starting in disconnected state. "
+                "Use the Settings page to reconnect.",
+                error=str(exc),
+            )
 
     @property
     def account_hash(self) -> str:
         if not self._account_hash:
-            raise RuntimeError("SchwabClient not initialized — call initialize() first")
+            raise RuntimeError("Schwab is not connected — token may be expired. Re-authenticate via the UI.")
         return self._account_hash
 
     async def get_quotes(self, symbols: list[str]) -> dict[str, Any]:

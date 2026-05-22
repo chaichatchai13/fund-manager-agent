@@ -19,17 +19,22 @@ async def on_startup() -> None:
     # Seed default scheduler configs if missing
     await _seed_scheduler_config()
 
-    # Initialize Schwab client
+    # Initialize Schwab client (non-fatal — app starts in disconnected state if token expired)
     from app.schwab.client import schwab_client
     await schwab_client.initialize()
+    if not schwab_client.is_connected:
+        logger.warning(
+            "Schwab not connected — scheduler and stream disabled until re-authenticated",
+            error=schwab_client.auth_error,
+        )
 
     # Start APScheduler
     from app.scheduler.jobs import start_scheduler
     await start_scheduler()
 
-    # Start Schwab streaming (skip in mock mode)
+    # Start Schwab streaming only if connected (skip in mock mode or disconnected)
     from app.config import settings
-    if not settings.mock_schwab:
+    if not settings.mock_schwab and schwab_client.is_connected:
         from app.schwab.stream_manager import stream_manager
         await stream_manager.start()
 

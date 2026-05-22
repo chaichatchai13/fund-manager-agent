@@ -4,6 +4,7 @@ from app.models.order import Order
 from app.models.trade import ClosedTrade
 from app.models.performance import DailySnapshot
 from app.models.scheduler import SchedulerConfig
+from app.models.schwab_token import SchwabToken
 
 __all__ = [
     "SellPutRule",
@@ -12,4 +13,5 @@ __all__ = [
     "ClosedTrade",
     "DailySnapshot",
     "SchedulerConfig",
+    "SchwabToken",
 ]

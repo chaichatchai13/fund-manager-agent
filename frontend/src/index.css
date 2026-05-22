@@ -8,7 +8,12 @@
 }
 
 body { margin: 0; background: #0d1117; color: #e6edf3; }
-#root { min-height: 100vh; }
+#root {
+  min-height: 100vh;
+  /* Respect iPhone notch / Dynamic Island safe areas */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
 /* Dark scrollbars */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

@@ -1,1 +1,13 @@
 /.env
+/key.pem
+/cert.pem
+/schwab_token.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Vite / Node
+frontend/node_modules/
+frontend/dist/
