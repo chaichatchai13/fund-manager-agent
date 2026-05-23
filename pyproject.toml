@@ -25,6 +25,8 @@ asyncpg = "^0.31.0"
 greenlet = "^3.2"
 pyjwt = ">=2.8"
 passlib = {version = ">=1.7", extras = ["bcrypt"]}
+twilio = "^9.10.9"
+pywebpush = "^2.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2"

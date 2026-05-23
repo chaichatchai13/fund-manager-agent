@@ -19,7 +19,12 @@ const QUICK_PROMPTS = [
   'List all rules',
 ]
 
-export function ChatPane() {
+interface ChatPaneProps {
+  prefillMessage?: string
+  onPrefillConsumed?: () => void
+}
+
+export function ChatPane({ prefillMessage, onPrefillConsumed }: ChatPaneProps = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -31,6 +36,14 @@ export function ChatPane() {
   const [loading, setLoading] = useState(false)
   const [apiMessages, setApiMessages] = useState<object[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Pre-fill input when "Ask agent →" is clicked from Social Intel tab
+  useEffect(() => {
+    if (prefillMessage) {
+      setInput(prefillMessage)
+      onPrefillConsumed?.()
+    }
+  }, [prefillMessage, onPrefillConsumed])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

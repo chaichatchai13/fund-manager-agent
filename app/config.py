@@ -37,6 +37,23 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
+    # Twilio (SMS alerts + two-way agent)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""   # e.g. +15551234567
+    alert_phone_number: str = ""   # your phone number to receive alerts
+
+    # Brave Search API (research skill)
+    brave_api_key: str = ""
+
+    # SocialData.tools (social intel skill)
+    socialdata_api_key: str = ""
+
+    # PWA Push (VAPID keys — generate with: npx web-push generate-vapid-keys)
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:admin@thetaflow.app"
+
     @property
     def database_url(self) -> str:
         return f"postgresql+asyncpg://{self.db_user}:{self.db_pass}@{self.db_host}:{self.db_port}/{self.db_name}"

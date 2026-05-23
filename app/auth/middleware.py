@@ -19,6 +19,8 @@ _PUBLIC = (
     "/api/schwab/status",
     "/api/schwab/callback",  # Schwab OAuth redirect — no cookie yet
     "/api/schwab/connect",   # Initiates OAuth — user may not have cookie in new tab
+    "/webhooks/",            # Twilio inbound SMS — no cookie, server-to-server
+    "/api/push/vapid-public-key",  # Needed before login to set up push subscription
 )
 
 # Route prefixes that require a valid token

@@ -101,12 +101,19 @@ class StreamManager:
                     schwab.streaming.StreamClient.LevelOneOption.Field.MARK, item.get("3")
                 )
                 if symbol and mark is not None:
-                    self.price_cache[symbol] = float(mark)
+                    price = float(mark)
+                    self.price_cache[symbol] = price
+                    # Fire price alerts (non-blocking)
+                    try:
+                        from app.services.alert_service import alert_service
+                        asyncio.create_task(alert_service.check_price(symbol, price))
+                    except Exception:
+                        pass
                     try:
                         self.update_queue.put_nowait({
                             "type": "price_update",
                             "symbol": symbol,
-                            "price": float(mark),
+                            "price": price,
                         })
                     except asyncio.QueueFull:
                         pass  # consumers are slow, drop update

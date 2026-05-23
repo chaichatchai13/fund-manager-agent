@@ -216,6 +216,12 @@ async def start_scheduler() -> None:
     _scheduler.add_job(daily_snapshot_job, CronTrigger(hour=16, minute=30, timezone="America/New_York"), id="daily_snapshot_job", replace_existing=True)
     _scheduler.add_job(iv_refresh_job, CronTrigger(hour=17, minute=0, timezone="America/New_York"), id="iv_refresh_job", replace_existing=True)
 
+    # Background agent jobs
+    from app.agent.background_agent import morning_digest, alert_open_prices, evening_prep
+    _scheduler.add_job(morning_digest, CronTrigger(hour=8, minute=0, timezone="America/New_York"), id="morning_digest", replace_existing=True)
+    _scheduler.add_job(alert_open_prices, CronTrigger(hour=9, minute=31, timezone="America/New_York"), id="alert_open_prices", replace_existing=True)
+    _scheduler.add_job(evening_prep, CronTrigger(hour=17, minute=0, timezone="America/New_York"), id="evening_prep", replace_existing=True)
+
     _scheduler.start()
     logger.info("Scheduler started", scan_interval=scan_interval, profit_interval=profit_interval)
 

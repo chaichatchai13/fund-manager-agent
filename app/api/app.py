@@ -43,7 +43,10 @@ def create_app() -> FastAPI:
             "schwab_connected": schwab_client.is_connected,
         }
 
-    from app.api.routes import agent, auth, rules, positions, orders, performance, websocket, account, schwab
+    from app.api.routes import (
+        agent, auth, rules, positions, orders, performance,
+        websocket, account, schwab, alerts, social_intel, webhooks, push,
+    )
     app.include_router(auth.router)
     app.include_router(agent.router)
     app.include_router(rules.router)
@@ -52,6 +55,10 @@ def create_app() -> FastAPI:
     app.include_router(performance.router)
     app.include_router(account.router)
     app.include_router(schwab.router)
+    app.include_router(alerts.router)
+    app.include_router(social_intel.router)
+    app.include_router(push.router)
+    app.include_router(webhooks.router)
     app.include_router(websocket.router)
 
     # Serve React frontend build in production

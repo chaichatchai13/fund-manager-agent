@@ -7,12 +7,15 @@ import { PositionsTable } from './components/PositionsTable'
 import { RulesPanel } from './components/RulesPanel'
 import { AccountHoldings } from './components/AccountHoldings'
 import { SettingsPanel } from './components/SettingsPanel'
+import { AlertsPanel } from './components/AlertsPanel'
+import { SocialIntelTab } from './components/SocialIntelTab'
 import { ThetaFlowLogo } from './components/ThetaFlowLogo'
 import { useAuth } from './hooks/useAuth'
 import { useWebSocket } from './hooks/useWebSocket'
+import { usePushNotifications } from './hooks/usePushNotifications'
 import type { PerformanceSummary } from './types'
 
-type Tab = 'dashboard' | 'positions' | 'rules' | 'chat' | 'settings'
+type Tab = 'dashboard' | 'positions' | 'rules' | 'chat' | 'social' | 'alerts' | 'settings'
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const BG = '#0d1117'
@@ -40,6 +43,22 @@ function Dashboard({ logout }: { logout: () => void }) {
   const { positions, connected, setPositions } = useWebSocket()
   const [summary, setSummary] = useState<PerformanceSummary | null>(null)
   const [account, setAccount] = useState<{ portfolio_value: number | null; buying_power: number | null } | null>(null)
+  const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined)
+
+  usePushNotifications()
+
+  // "Ask agent →" button in SocialIntelTab fires this event to open chat with a pre-filled message
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<{ message: string }>).detail?.message
+      if (msg) {
+        setChatPrefill(msg)
+        setTab('chat')
+      }
+    }
+    window.addEventListener('open-chat', handler)
+    return () => window.removeEventListener('open-chat', handler)
+  }, [])
 
   useEffect(() => {
     fetch('/api/performance/summary?period=today').then((r) => r.json()).then(setSummary).catch(() => {})
@@ -106,6 +125,8 @@ function Dashboard({ logout }: { logout: () => void }) {
     { id: 'positions', label: `Positions (${openPositions.length})` },
     { id: 'rules', label: 'Rules' },
     { id: 'chat', label: 'Agent Chat' },
+    { id: 'social', label: 'Social Intel' },
+    { id: 'alerts', label: 'Alerts' },
     { id: 'settings', label: 'Settings' },
   ]
 
@@ -240,7 +261,13 @@ function Dashboard({ logout }: { logout: () => void }) {
         {tab === 'rules' && <RulesPanel />}
 
         {/* ── CHAT ── */}
-        {tab === 'chat' && <ChatPane />}
+        {tab === 'chat' && <ChatPane prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />}
+
+        {/* ── SOCIAL INTEL ── */}
+        {tab === 'social' && <SocialIntelTab />}
+
+        {/* ── ALERTS ── */}
+        {tab === 'alerts' && <AlertsPanel />}
 
         {/* ── SETTINGS ── */}
         {tab === 'settings' && <SettingsPanel />}

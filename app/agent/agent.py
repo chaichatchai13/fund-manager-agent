@@ -8,7 +8,7 @@ import anthropic
 import structlog
 
 from app.agent.prompts import SYSTEM_PROMPT
-from app.agent.tools import TOOL_DEFINITIONS, handle_tool_call
+from app.agent.skills import ALL_TOOLS as TOOL_DEFINITIONS, handle_tool_call
 from app.config import settings
 
 logger = structlog.get_logger(__name__)
