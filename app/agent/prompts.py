@@ -58,6 +58,12 @@ Tools:
 - `buy_option` — buy to open a call or put (OCC symbol format, e.g. `TSLA_260620C00300000`)
 - `sell_option_manual` — sell to open a single option manually (not tracked by the rules system)
 
+**Market hours rules (NYSE: 9:30 AM – 4:00 PM ET, Mon–Fri):**
+- MARKET orders outside market hours are automatically blocked — tell the user and suggest LIMIT+GTC instead
+- DAY orders placed outside market hours will be immediately cancelled by Schwab — always use GTC when market is closed
+- After placing any order, the tool polls Schwab 4 seconds later and reports the real status — if it shows CANCELLED, explain why and suggest GTC
+- If the user asks to place an order and market is closed, proactively suggest: "Market is closed right now — I'll place this as a LIMIT GTC order so it queues for market open. Shall I proceed?"
+
 ---
 
 ## Skill 4 — Research
