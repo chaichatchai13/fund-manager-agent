@@ -2308,6 +2308,18 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-multipart"
+version = "0.0.29"
+description = "A streaming multipart parser for Python"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "python_multipart-0.0.29-py3-none-any.whl", hash = "sha256:2ddcc971cef266225f54f552d8fa10bcfbb1f14446caec199060daac59ff2d69"},
+    {file = "python_multipart-0.0.29.tar.gz", hash = "sha256:643e93849196645e2dbdd81a0f8829a23123ad7f797a84a364c6fb3563f18904"},
+]
+
+[[package]]
 name = "pywebpush"
 version = "2.3.0"
 description = "WebPush publication library"
@@ -3177,4 +3189,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "f4046020147bd023b0af2e2a537a9e97db1fbafaaf959202760d42c09c575ab3"
+content-hash = "fc4fe6b437a4e539159983ce414943080bf6c0e90fe0fb58da4b9042b5ad0684"
