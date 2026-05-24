@@ -98,12 +98,30 @@ class SMSService:
         try:
             if action_type == "open_sell_put":
                 symbol = action["symbol"]
+                rule_id = action.get("rule_id")
                 from app.services.scan_service import scan_service
-                # Run scan specifically for this symbol
-                positions = await scan_service.run_scan(symbols=[symbol])
+                from app.db.session import AsyncSessionLocal
+                # Find an enabled sell-put rule for this symbol if no rule_id stored
+                if not rule_id:
+                    from sqlalchemy import select
+                    from app.models.rule import SellPutRule
+                    async with AsyncSessionLocal() as db:
+                        result = await db.execute(
+                            select(SellPutRule).where(
+                                SellPutRule.symbol == symbol.upper(),
+                                SellPutRule.enabled.is_(True),
+                            ).limit(1)
+                        )
+                        rule = result.scalar_one_or_none()
+                    rule_id = rule.id if rule else None
+
+                if not rule_id:
+                    return f"No enabled sell-put rule found for {symbol}. Create one in the app first."
+
+                positions = await scan_service.run_scan(rule_id=rule_id)
                 if positions:
                     return f"✅ Sell put opened on {symbol}. Check the app for details."
-                return f"Scan ran for {symbol} but no suitable put found at this time."
+                return f"Scan ran for {symbol} but no suitable put found right now (market conditions or no qualifying strikes)."
 
             return f"Action '{action_type}' executed."
         except Exception as exc:

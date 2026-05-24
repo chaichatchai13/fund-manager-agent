@@ -103,9 +103,65 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
             result = await schwab_client.place_order(order)
             return {"action": "sell_shares", **tool_input, "result": result}
 
-        if name in ("buy_option", "sell_option_manual"):
-            # Full implementation planned for next sprint
-            return {"error": "Direct option trading not yet implemented — use rules for automated selling"}
+        if name == "buy_option":
+            # Buy-to-open: normalise symbol (underscores → spaces for Schwab)
+            raw_symbol = tool_input["option_symbol"].replace("_", " ").upper()
+            contracts = tool_input["contracts"]
+            order_type = tool_input.get("order_type", "LIMIT")
+            limit_price = tool_input.get("limit_price")
+
+            if order_type == "LIMIT" and not limit_price:
+                return {"error": "limit_price is required for LIMIT orders"}
+
+            import schwab.orders.options as opt
+            import schwab.orders.common as common
+
+            if order_type == "LIMIT":
+                order = (
+                    opt.option_buy_to_open_limit(raw_symbol, contracts, limit_price)
+                    .set_duration(common.Duration.DAY)
+                    .set_session(common.Session.NORMAL)
+                    .build()
+                )
+            else:
+                order = (
+                    opt.option_buy_to_open_market(raw_symbol, contracts)
+                    .set_duration(common.Duration.DAY)
+                    .set_session(common.Session.NORMAL)
+                    .build()
+                )
+
+            result = await schwab_client.place_order(order)
+            return {"action": "buy_option", "symbol": raw_symbol, "contracts": contracts,
+                    "order_type": order_type, "limit_price": limit_price, "result": result}
+
+        if name == "sell_option_manual":
+            # Sell-to-open: normalise symbol
+            raw_symbol = tool_input["option_symbol"].replace("_", " ").upper()
+            contracts = tool_input["contracts"]
+            order_type = tool_input.get("order_type", "LIMIT")
+            limit_price = tool_input.get("limit_price")
+
+            if order_type == "LIMIT" and not limit_price:
+                return {"error": "limit_price is required for LIMIT orders"}
+
+            from app.schwab.order_builder import build_sell_to_open_limit
+            import schwab.orders.options as opt
+            import schwab.orders.common as common
+
+            if order_type == "LIMIT":
+                order = build_sell_to_open_limit(raw_symbol, contracts, limit_price)
+            else:
+                order = (
+                    opt.option_sell_to_open_market(raw_symbol, contracts)
+                    .set_duration(common.Duration.DAY)
+                    .set_session(common.Session.NORMAL)
+                    .build()
+                )
+
+            result = await schwab_client.place_order(order)
+            return {"action": "sell_option_manual", "symbol": raw_symbol, "contracts": contracts,
+                    "order_type": order_type, "limit_price": limit_price, "result": result}
 
     except Exception as exc:
         logger.error("Direct trading tool handler error", tool=name, error=str(exc))
