@@ -13,10 +13,11 @@ const CARD: React.CSSProperties = {
 
 const QUICK_PROMPTS = [
   'Show open positions',
-  'Weekly performance',
-  'Create a rule',
   'Scan now',
-  'List all rules',
+  'Create a rule',
+  'Research TSLA',
+  'Get TSLA quote',
+  'Weekly performance',
 ]
 
 interface ChatPaneProps {
@@ -29,7 +30,7 @@ export function ChatPane({ prefillMessage, onPrefillConsumed }: ChatPaneProps = 
     {
       role: 'assistant',
       content:
-        "Hey! I'm your ThetaFlow agent — your automated options income system. I run two strategies for you:\n\n📉 Sell Puts — collect premium below market price, sized to your available cash\n📈 Covered Calls — generate income on shares you already hold\n\nI can create & manage rules, monitor open positions, trigger scans, close trades, and analyze your P&L.\n\nWhat would you like to do?",
+        "Hey! I'm your ThetaFlow agent — your personal automated trading system.\n\nHere's what I can do for you:\n\n📉 Sell Puts & 📈 Covered Calls — create rules, run scans, manage positions, roll ITM trades\n📊 Market Data — live quotes, option chains, IV rank for any symbol\n🛒 Direct Trading — buy/sell shares or options on demand\n🔍 Research — web search, stock news, analyst targets, earnings dates\n📣 Social Intel — summaries of what your favourite X accounts are saying about specific stocks\n\nYou can also set up price alerts in the Alerts tab — I'll text you when something needs attention and you can reply YES/NO to act on it.\n\nWhat would you like to do?",
     },
   ])
   const [input, setInput] = useState('')
