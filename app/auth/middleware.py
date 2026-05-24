@@ -16,6 +16,8 @@ from app.auth.security import COOKIE_NAME, decode_token
 _PUBLIC = (
     "/health",
     "/auth/",
+    "/privacy",   # Privacy policy — required for Twilio 10DLC registration
+    "/terms",     # Terms of service — required for Twilio 10DLC registration
     "/api/schwab/status",
     "/api/schwab/callback",  # Schwab OAuth redirect — no cookie yet
     "/api/schwab/connect",   # Initiates OAuth — user may not have cookie in new tab
