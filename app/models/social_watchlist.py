@@ -1,6 +1,6 @@
 """Social intel watchlist — X accounts to monitor per stock."""
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, Integer, String, JSON
+from sqlalchemy import Column, DateTime, Integer, String, Text, JSON
 from app.database import Base
 
 
@@ -31,10 +31,10 @@ class SocialPost(Base):
     post_id = Column(String(100), nullable=False, unique=True)    # X post ID
     x_handle = Column(String(100), nullable=False, index=True)
     stock = Column(String(20), nullable=False, index=True)
-    content = Column(String(4000), nullable=False)
-    summary = Column(String(2000), nullable=True)                 # AI-generated summary
+    content = Column(Text, nullable=False)
+    summary = Column(Text, nullable=True)                         # AI-generated summary
     image_urls = Column(JSON, nullable=True)                      # list of image URLs
     referenced_post_id = Column(String(100), nullable=True)      # one-level cross-reference
-    referenced_content = Column(String(4000), nullable=True)
+    referenced_content = Column(Text, nullable=True)
     posted_at = Column(DateTime(timezone=True), nullable=False)
     fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
