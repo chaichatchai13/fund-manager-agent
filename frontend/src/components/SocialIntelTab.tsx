@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
+import type { ChatMessage } from '../types'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const BG = '#0d1117'
@@ -65,10 +66,11 @@ export function SocialIntelTab() {
   const [filterStock, setFilterStock] = useState<string>('all')
   const [loadingFeed, setLoadingFeed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined)
+  const [showWatchlist, setShowWatchlist] = useState(true)
+  const isMobile = window.innerWidth < 900
 
-  // Collect all unique stocks from watchlist
   const allStocks = Array.from(new Set(watchlist.flatMap((w) => w.stocks))).sort()
-  // Collect all unique handles
   const allHandles = watchlist.map((w) => w.x_handle)
 
   const fetchWatchlist = async () => {
@@ -106,67 +108,92 @@ export function SocialIntelTab() {
     setRefreshing(false)
   }
 
-  // Apply handle filter client-side (API only filters by stock)
   const visiblePosts = filterHandle === 'all'
     ? posts
     : posts.filter((p) => p.x_handle === filterHandle)
 
+  const handleAskAgent = (msg: string) => {
+    setChatPrefill(msg)
+  }
+
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', minHeight: 0 }}>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: 0 }}>
 
       {/* ── Left panel: Watchlist ─────────────────────────────────────────── */}
-      <div style={{
-        flex: '0 0 280px',
-        background: CARD_BG,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}>
-        <div style={{ padding: '14px 16px', borderBottom: `1px solid ${BORDER}` }}>
-          <h3 style={{ color: '#e6edf3', fontWeight: 600, fontSize: 14, margin: 0 }}>X Watchlist</h3>
-        </div>
-
-        {watchlist.length === 0 && (
-          <div style={{ padding: '20px 16px', color: '#484f58', fontSize: 13, textAlign: 'center' }}>
-            No accounts yet.
+      {(!isMobile || showWatchlist) && (
+        <div style={{
+          flex: `0 0 ${isMobile ? '100%' : '240px'}`,
+          background: CARD_BG,
+          border: `1px solid ${BORDER}`,
+          borderRadius: 12,
+          overflow: 'hidden',
+          position: isMobile ? undefined : 'sticky',
+          top: isMobile ? undefined : 16,
+          maxHeight: isMobile ? undefined : 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        }}>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ color: '#e6edf3', fontWeight: 600, fontSize: 14, margin: 0 }}>X Watchlist</h3>
+            {isMobile && (
+              <button onClick={() => setShowWatchlist(false)} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 18 }}>×</button>
+            )}
           </div>
-        )}
 
-        {watchlist.map((entry, idx) => (
-          <WatchlistRow
-            key={entry.x_handle}
-            entry={entry}
-            isLast={idx === watchlist.length - 1}
-            onRemove={() => {
-              fetch(`/api/social/watchlist/${entry.x_handle}`, { method: 'DELETE' })
-                .then(fetchWatchlist)
-            }}
-          />
-        ))}
+          {watchlist.length === 0 && (
+            <div style={{ padding: '20px 16px', color: '#484f58', fontSize: 13, textAlign: 'center' }}>
+              No accounts yet.
+            </div>
+          )}
 
-        <AddWatchlistForm onAdded={fetchWatchlist} />
-      </div>
+          {watchlist.map((entry, idx) => (
+            <WatchlistRow
+              key={entry.x_handle}
+              entry={entry}
+              isLast={idx === watchlist.length - 1}
+              onRemove={() => {
+                fetch(`/api/social/watchlist/${entry.x_handle}`, { method: 'DELETE' })
+                  .then(fetchWatchlist)
+              }}
+            />
+          ))}
 
-      {/* ── Right panel: Feed ─────────────────────────────────────────────── */}
+          <AddWatchlistForm onAdded={fetchWatchlist} />
+        </div>
+      )}
+
+      {/* ── Center panel: Feed ───────────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0 }}>
+
+        {/* Mobile toggle for watchlist */}
+        {isMobile && !showWatchlist && (
+          <button
+            onClick={() => setShowWatchlist(true)}
+            style={{
+              marginBottom: 10, padding: '6px 12px', fontSize: 12,
+              background: '#21262d', border: `1px solid ${BORDER}`,
+              borderRadius: 7, color: MUTED, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            ☰ Watchlist
+          </button>
+        )}
 
         {/* Feed toolbar */}
         <div style={{
           background: CARD_BG,
           border: `1px solid ${BORDER}`,
           borderRadius: 12,
-          padding: '12px 16px',
+          padding: '10px 14px',
           marginBottom: 12,
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 8,
           flexWrap: 'wrap',
         }}>
-          {/* Handle filter */}
           <select
             value={filterHandle}
             onChange={(e) => setFilterHandle(e.target.value)}
-            style={{ ...inputBase, width: 'auto', minWidth: 120, cursor: 'pointer' }}
+            style={{ ...inputBase, width: 'auto', minWidth: 110, cursor: 'pointer', padding: '5px 8px', fontSize: 12 }}
           >
             <option value="all">All accounts</option>
             {allHandles.map((h) => (
@@ -174,11 +201,10 @@ export function SocialIntelTab() {
             ))}
           </select>
 
-          {/* Stock filter */}
           <select
             value={filterStock}
             onChange={(e) => setFilterStock(e.target.value)}
-            style={{ ...inputBase, width: 'auto', minWidth: 100, cursor: 'pointer' }}
+            style={{ ...inputBase, width: 'auto', minWidth: 90, cursor: 'pointer', padding: '5px 8px', fontSize: 12 }}
           >
             <option value="all">All stocks</option>
             {allStocks.map((s) => (
@@ -194,20 +220,15 @@ export function SocialIntelTab() {
             style={{
               background: refreshing ? '#21262d' : BLUE_BTN,
               color: refreshing ? MUTED : '#fff',
-              border: 'none',
-              borderRadius: 7,
-              padding: '7px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: refreshing ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
+              border: 'none', borderRadius: 7,
+              padding: '5px 12px', fontSize: 12, fontWeight: 600,
+              cursor: refreshing ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             }}
           >
             {refreshing ? 'Refreshing…' : '↻ Refresh'}
           </button>
         </div>
 
-        {/* Posts */}
         {loadingFeed && (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>
             Loading feed…
@@ -216,51 +237,337 @@ export function SocialIntelTab() {
 
         {!loadingFeed && visiblePosts.length === 0 && (
           <div style={{
-            background: CARD_BG,
-            border: `1px solid ${BORDER}`,
-            borderRadius: 12,
-            padding: '40px 20px',
-            textAlign: 'center',
-            color: '#484f58',
-            fontSize: 13,
+            background: CARD_BG, border: `1px solid ${BORDER}`,
+            borderRadius: 12, padding: '40px 20px',
+            textAlign: 'center', color: '#484f58', fontSize: 13,
           }}>
             No posts found. Add accounts to the watchlist and click Refresh.
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {visiblePosts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onAskAgent={handleAskAgent} />
           ))}
         </div>
+      </div>
+
+      {/* ── Right panel: Inline Agent Chat ───────────────────────────────── */}
+      {!isMobile && (
+        <div style={{
+          flex: '0 0 320px',
+          position: 'sticky',
+          top: 16,
+          height: 'calc(100vh - 120px)',
+        }}>
+          <InlineChat prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />
+        </div>
+      )}
+
+      {/* Mobile: floating chat button + bottom sheet */}
+      {isMobile && (
+        <MobileChatSheet prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />
+      )}
+    </div>
+  )
+}
+
+// ── Inline Chat Panel ─────────────────────────────────────────────────────────
+const SOCIAL_QUICK_PROMPTS = [
+  'Summarize $IREN news',
+  'What is unusual_whales saying?',
+  'Should I sell a put on $IREN?',
+  'Check IV rank for $TSLA',
+  'Scan for opportunities',
+]
+
+function InlineChat({ prefillMessage, onPrefillConsumed }: { prefillMessage?: string; onPrefillConsumed?: () => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: 'assistant',
+      content: "Hi! I'm watching the feed with you. Click **Ask agent →** on any post to discuss it, or ask me anything about the stocks in your watchlist.",
+    },
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [apiMessages, setApiMessages] = useState<object[]>([])
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (prefillMessage) {
+      setInput(prefillMessage)
+      onPrefillConsumed?.()
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }, [prefillMessage, onPrefillConsumed])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const sendMessage = async (text?: string) => {
+    const userText = (text ?? input).trim()
+    if (!userText || loading) return
+    setInput('')
+    setMessages((prev) => [...prev, { role: 'user', content: userText }])
+    setLoading(true)
+
+    try {
+      const res = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: apiMessages, user_message: userText }),
+      })
+      const data = await res.json()
+      setApiMessages(data.messages || [])
+      setMessages((prev) => [...prev, { role: 'assistant', content: data.response }])
+    } catch {
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Error contacting agent. Please try again.' }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: CARD_BG,
+      border: `1px solid ${BORDER}`,
+      borderRadius: 12,
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '12px 14px',
+        borderBottom: `1px solid ${BORDER}`,
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #1f6feb, #3fb950)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, flexShrink: 0,
+        }}>
+          🤖
+        </div>
+        <div>
+          <div style={{ color: '#e6edf3', fontWeight: 600, fontSize: 13 }}>
+            Agent Chat
+          </div>
+          <div style={{ color: MUTED, fontSize: 10 }}>Discuss the feed with your AI</div>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          <span style={{
+            width: 7, height: 7, borderRadius: '50%',
+            background: GREEN, display: 'inline-block',
+            animation: 'pulse 2s infinite',
+          }} />
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}>
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{
+              maxWidth: '88%',
+              padding: '8px 11px',
+              borderRadius: msg.role === 'user' ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
+              background: msg.role === 'user' ? BLUE_BTN : '#21262d',
+              color: msg.role === 'user' ? '#fff' : '#e6edf3',
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+            }}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{
+              padding: '8px 11px', borderRadius: '14px 14px 14px 3px',
+              background: '#21262d', color: MUTED, fontSize: 12.5,
+            }}>
+              <span style={{ animation: 'pulse 1.2s infinite' }}>Thinking…</span>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Quick prompts */}
+      <div style={{
+        padding: '6px 10px',
+        borderTop: `1px solid #21262d`,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 5,
+        flexShrink: 0,
+      }}>
+        {SOCIAL_QUICK_PROMPTS.map((p) => (
+          <button
+            key={p}
+            onClick={() => sendMessage(p)}
+            disabled={loading}
+            style={{
+              background: '#21262d', color: '#58a6ff',
+              border: '1px solid #30363d', borderRadius: 5,
+              padding: '2px 8px', fontSize: 10.5,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#30363d')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#21262d')}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div style={{
+        padding: '10px 12px',
+        borderTop: `1px solid ${BORDER}`,
+        display: 'flex',
+        gap: 7,
+        flexShrink: 0,
+      }}>
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+          placeholder="Ask about the feed…"
+          disabled={loading}
+          style={{
+            flex: 1,
+            padding: '7px 11px',
+            fontSize: 12.5,
+            background: '#21262d',
+            border: '1px solid #30363d',
+            borderRadius: 7,
+            color: '#e6edf3',
+            outline: 'none',
+            fontFamily: 'inherit',
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')}
+        />
+        <button
+          onClick={() => sendMessage()}
+          disabled={loading || !input.trim()}
+          style={{
+            padding: '7px 14px',
+            background: loading || !input.trim() ? '#21262d' : BLUE_BTN,
+            color: loading || !input.trim() ? '#484f58' : '#fff',
+            border: 'none', borderRadius: 7,
+            fontSize: 12.5, fontWeight: 600,
+            cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          ↑
+        </button>
       </div>
     </div>
   )
 }
 
+// ── Mobile: floating chat button + slide-up sheet ─────────────────────────────
+function MobileChatSheet({ prefillMessage, onPrefillConsumed }: { prefillMessage?: string; onPrefillConsumed?: () => void }) {
+  const [open, setOpen] = useState(false)
+
+  // Auto-open when "Ask agent →" is clicked
+  useEffect(() => {
+    if (prefillMessage) setOpen(true)
+  }, [prefillMessage])
+
+  return (
+    <>
+      {/* Floating button */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            position: 'fixed', bottom: 20, right: 16, zIndex: 50,
+            width: 52, height: 52, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #1f6feb, #3fb950)',
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, boxShadow: '0 4px 20px rgba(31,111,235,0.5)',
+          }}
+        >
+          💬
+        </button>
+      )}
+
+      {/* Sheet */}
+      {open && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+          height: '65vh',
+          background: CARD_BG,
+          borderTop: `2px solid ${BORDER}`,
+          borderRadius: '14px 14px 0 0',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+        }}>
+          {/* Sheet handle */}
+          <div style={{ padding: '10px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: BORDER }} />
+          </div>
+          {/* Close */}
+          <button
+            onClick={() => setOpen(false)}
+            style={{
+              position: 'absolute', top: 8, right: 14,
+              background: 'none', border: 'none', color: MUTED,
+              fontSize: 22, cursor: 'pointer', lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+          {/* Inline chat fills the sheet */}
+          <div style={{ flex: 1, overflow: 'hidden', padding: '0 0 0 0' }}>
+            <InlineChat prefillMessage={prefillMessage} onPrefillConsumed={onPrefillConsumed} />
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ── Watchlist row ─────────────────────────────────────────────────────────────
 function WatchlistRow({
-  entry,
-  isLast,
-  onRemove,
+  entry, isLast, onRemove,
 }: {
   entry: WatchlistEntry
   isLast: boolean
   onRemove: () => void
 }) {
   return (
-    <div style={{
-      padding: '12px 16px',
-      borderBottom: isLast ? 'none' : `1px solid #21262d`,
-    }}
+    <div
+      style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : `1px solid #21262d` }}
       onMouseEnter={(e) => (e.currentTarget.style.background = '#1c2128')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#e6edf3' }}>
-            @{entry.x_handle}
-          </div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#e6edf3' }}>@{entry.x_handle}</div>
           {entry.display_name && (
             <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>{entry.display_name}</div>
           )}
@@ -268,9 +575,8 @@ function WatchlistRow({
             {entry.stocks.map((s) => (
               <span key={s} style={{
                 background: '#1f2937', color: '#58a6ff',
-                border: '1px solid #1f6feb44',
-                borderRadius: 4, padding: '1px 6px',
-                fontSize: 11, fontWeight: 600,
+                border: '1px solid #1f6feb44', borderRadius: 4,
+                padding: '1px 6px', fontSize: 11, fontWeight: 600,
               }}>
                 ${s}
               </span>
@@ -280,10 +586,9 @@ function WatchlistRow({
         <button
           onClick={onRemove}
           style={{
-            color: '#484f58', fontSize: 11,
-            background: 'none', border: 'none',
-            cursor: 'pointer', padding: '2px 4px',
-            fontFamily: 'inherit', flexShrink: 0, marginLeft: 8,
+            color: '#484f58', fontSize: 11, background: 'none', border: 'none',
+            cursor: 'pointer', padding: '2px 4px', fontFamily: 'inherit',
+            flexShrink: 0, marginLeft: 8,
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#f85149')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#484f58')}
@@ -305,8 +610,7 @@ function AddWatchlistForm({ onAdded }: { onAdded: () => void }) {
   const add = async () => {
     const cleanHandle = handle.replace(/^@/, '').trim()
     if (!cleanHandle) { setError('Handle is required'); return }
-    setSaving(true)
-    setError('')
+    setSaving(true); setError('')
     try {
       const stocks = stocksText
         .split(/[\s,]+/)
@@ -320,15 +624,11 @@ function AddWatchlistForm({ onAdded }: { onAdded: () => void }) {
       if (!res.ok) {
         const d = await res.json().catch(() => ({}))
         setError(d?.detail ?? 'Failed to add')
-        setSaving(false)
-        return
+        setSaving(false); return
       }
-      setHandle('')
-      setStocksText('')
+      setHandle(''); setStocksText('')
       onAdded()
-    } catch {
-      setError('Network error')
-    }
+    } catch { setError('Network error') }
     setSaving(false)
   }
 
@@ -337,38 +637,25 @@ function AddWatchlistForm({ onAdded }: { onAdded: () => void }) {
     color: MUTED, marginBottom: 3,
     textTransform: 'uppercase', letterSpacing: '0.04em',
   }
-
   const focusInput = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = '#58a6ff' }
   const blurInput = (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = '#30363d' }
 
   return (
-    <div style={{ padding: '14px 16px', borderTop: `1px solid ${BORDER}`, background: BG }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+    <div style={{ padding: '12px 14px', borderTop: `1px solid ${BORDER}`, background: BG }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
         Add Account
       </div>
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ marginBottom: 7 }}>
         <label style={labelSt}>Handle</label>
-        <input
-          type="text"
-          placeholder="@unusual_whales"
-          value={handle}
+        <input type="text" placeholder="@unusual_whales" value={handle}
           onChange={(e) => setHandle(e.target.value)}
-          style={inputBase}
-          onFocus={focusInput}
-          onBlur={blurInput}
-        />
+          style={inputBase} onFocus={focusInput} onBlur={blurInput} />
       </div>
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 9 }}>
         <label style={labelSt}>Stocks (comma or space separated)</label>
-        <input
-          type="text"
-          placeholder="TSLA, NVDA"
-          value={stocksText}
+        <input type="text" placeholder="TSLA, NVDA" value={stocksText}
           onChange={(e) => setStocksText(e.target.value)}
-          style={inputBase}
-          onFocus={focusInput}
-          onBlur={blurInput}
-        />
+          style={inputBase} onFocus={focusInput} onBlur={blurInput} />
       </div>
       {error && <div style={{ fontSize: 11, color: '#f85149', marginBottom: 8 }}>{error}</div>}
       <button
@@ -391,35 +678,28 @@ function AddWatchlistForm({ onAdded }: { onAdded: () => void }) {
 }
 
 // ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ post }: { post: SocialPost }) {
+function PostCard({ post, onAskAgent }: { post: SocialPost; onAskAgent: (msg: string) => void }) {
   const [refExpanded, setRefExpanded] = useState(false)
 
   const askAgent = () => {
-    const msg = `Tell me more about this $${post.stock} post from @${post.x_handle}: ${post.summary || post.content.slice(0, 200)}`
-    window.dispatchEvent(new CustomEvent('open-chat', { detail: { message: msg } }))
+    onAskAgent(`Tell me more about this $${post.stock} post from @${post.x_handle}: ${post.summary || post.content.slice(0, 200)}`)
   }
 
   return (
     <div style={{
-      background: CARD_BG,
-      border: `1px solid ${BORDER}`,
-      borderRadius: 12,
-      overflow: 'hidden',
+      background: CARD_BG, border: `1px solid ${BORDER}`,
+      borderRadius: 12, overflow: 'hidden',
     }}>
-      {/* Card header */}
+      {/* Header */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '10px 16px',
-        borderBottom: `1px solid #21262d`,
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '9px 14px', borderBottom: `1px solid #21262d`,
         flexWrap: 'wrap',
       }}>
         <span style={{
           background: '#1f2937', color: '#58a6ff',
-          border: '1px solid #1f6feb44',
-          borderRadius: 4, padding: '1px 7px',
-          fontSize: 12, fontWeight: 700,
+          border: '1px solid #1f6feb44', borderRadius: 4,
+          padding: '1px 7px', fontSize: 12, fontWeight: 700,
         }}>
           ${post.stock}
         </span>
@@ -429,16 +709,12 @@ function PostCard({ post }: { post: SocialPost }) {
         <span style={{ fontSize: 12, color: '#484f58' }}>{relativeTime(post.posted_at)}</span>
       </div>
 
-      {/* Card body */}
-      <div style={{ padding: '12px 16px' }}>
-        {/* Summary */}
+      {/* Body */}
+      <div style={{ padding: '11px 14px' }}>
         {post.summary && (
           <div style={{
-            background: '#1a2d1e',
-            border: '1px solid #3fb95022',
-            borderRadius: 8,
-            padding: '8px 12px',
-            marginBottom: 10,
+            background: '#1a2d1e', border: '1px solid #3fb95022',
+            borderRadius: 8, padding: '8px 11px', marginBottom: 10,
           }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: GREEN, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Summary
@@ -449,63 +725,44 @@ function PostCard({ post }: { post: SocialPost }) {
           </div>
         )}
 
-        {/* Full content (if different from summary or no summary) */}
         {!post.summary && (
           <p style={{ fontSize: 13, color: '#c9d1d9', lineHeight: 1.6, margin: '0 0 10px' }}>
             {post.content}
           </p>
         )}
 
-        {/* Images */}
         {post.image_urls && post.image_urls.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
             {post.image_urls.map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt="Post image"
-                style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, border: `1px solid ${BORDER}`, objectFit: 'cover' }}
-              />
+              <img key={i} src={url} alt="Post image" style={{
+                maxWidth: '100%', maxHeight: 260, borderRadius: 8,
+                border: `1px solid ${BORDER}`, objectFit: 'cover',
+              }} />
             ))}
           </div>
         )}
 
-        {/* Referenced content (collapsible) */}
         {post.referenced_content && (
           <div style={{ marginBottom: 10 }}>
             <button
               onClick={() => setRefExpanded((v) => !v)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'none',
-                border: 'none',
-                color: MUTED,
-                fontSize: 12,
-                cursor: 'pointer',
-                padding: '2px 0',
-                fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'none', border: 'none', color: MUTED,
+                fontSize: 12, cursor: 'pointer', padding: '2px 0', fontFamily: 'inherit',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#e6edf3')}
               onMouseLeave={(e) => (e.currentTarget.style.color = MUTED)}
             >
-              <span style={{ transition: 'transform 0.15s', display: 'inline-block', transform: refExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                ▶
-              </span>
+              <span style={{ transition: 'transform 0.15s', display: 'inline-block', transform: refExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
               Referenced post
             </button>
             {refExpanded && (
               <div style={{
-                marginTop: 8,
-                padding: '10px 12px',
-                background: '#21262d',
-                border: `1px solid ${BORDER}`,
-                borderRadius: 8,
-                fontSize: 12,
-                color: '#8b949e',
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap' as const,
+                marginTop: 8, padding: '10px 12px',
+                background: '#21262d', border: `1px solid ${BORDER}`,
+                borderRadius: 8, fontSize: 12, color: '#8b949e',
+                lineHeight: 1.6, whiteSpace: 'pre-wrap' as const,
               }}>
                 {post.referenced_content}
               </div>
@@ -514,44 +771,25 @@ function PostCard({ post }: { post: SocialPost }) {
         )}
 
         {/* Footer actions */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
           <a
             href={`https://x.com/${post.x_handle}/status/${post.post_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             style={{
-              fontSize: 12,
-              color: MUTED,
-              textDecoration: 'none',
-              padding: '4px 10px',
-              border: `1px solid ${BORDER}`,
-              borderRadius: 6,
+              fontSize: 12, color: MUTED, textDecoration: 'none',
+              padding: '4px 10px', border: `1px solid ${BORDER}`, borderRadius: 6,
             }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement
-              el.style.color = '#58a6ff'
-              el.style.borderColor = '#1f6feb44'
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement
-              el.style.color = MUTED
-              el.style.borderColor = BORDER
-            }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.color = '#58a6ff'; el.style.borderColor = '#1f6feb44' }}
+            onMouseLeave={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.color = MUTED; el.style.borderColor = BORDER }}
           >
             Read full post ↗
           </a>
           <button
             onClick={askAgent}
             style={{
-              fontSize: 12,
-              color: '#e6edf3',
-              background: BLUE_BTN,
-              border: 'none',
-              borderRadius: 6,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontWeight: 500,
+              fontSize: 12, color: '#e6edf3', background: BLUE_BTN,
+              border: 'none', borderRadius: 6, padding: '4px 10px',
+              cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500,
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = '#388bfd')}
             onMouseLeave={(e) => (e.currentTarget.style.background = BLUE_BTN)}
