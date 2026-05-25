@@ -28,11 +28,15 @@ class SocialService:
     def _headers(self) -> dict:
         from app.config import settings
         if not settings.socialdata_api_key:
-            raise RuntimeError("SOCIALDATA_API_KEY not configured — get one at socialdata.tools")
+            raise RuntimeError("SOCIALDATA_API_KEY not configured — sign up at https://socialdata.tools to enable X.com post summaries")
         return {
             "Authorization": f"Bearer {settings.socialdata_api_key}",
             "Accept": "application/json",
         }
+
+    def _api_configured(self) -> bool:
+        from app.config import settings
+        return bool(settings.socialdata_api_key)
 
     # ── Watchlist management ────────────────────────────────────────────────
 
@@ -161,6 +165,9 @@ class SocialService:
         Fetch and summarize posts for all watched accounts × stocks.
         Returns structured data suitable for the article-style UI.
         """
+        if not self._api_configured():
+            return {"posts": [], "message": "SOCIALDATA_API_KEY not configured. Sign up at https://socialdata.tools to enable X.com post summaries."}
+
         watchlist = await self.get_watchlist()
         if not watchlist:
             return {"posts": [], "message": "No accounts in watchlist. Add some with add_social_watchlist."}

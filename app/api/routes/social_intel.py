@@ -10,6 +10,10 @@ class WatchlistAdd(BaseModel):
     stocks: list[str]
 
 
+class RefreshRequest(BaseModel):
+    stocks: list[str] | None = None
+
+
 @router.get("/watchlist")
 async def get_watchlist():
     from app.services.social_service import social_service
@@ -36,7 +40,8 @@ async def get_feed(stock: str | None = None, x_handle: str | None = None, limit:
 
 
 @router.post("/refresh")
-async def refresh_feed(stocks: list[str] | None = None):
+async def refresh_feed(body: RefreshRequest | None = None):
     """Fetch new posts since last check and return summary."""
     from app.services.social_service import social_service
+    stocks = body.stocks if body else None
     return await social_service.get_summary(stocks=stocks, since_last_check=True)
