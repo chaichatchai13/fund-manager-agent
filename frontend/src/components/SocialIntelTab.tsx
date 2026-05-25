@@ -66,7 +66,6 @@ export function SocialIntelTab() {
   const [filterStock, setFilterStock] = useState<string>('all')
   const [loadingFeed, setLoadingFeed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined)
   const [showWatchlist, setShowWatchlist] = useState(true)
   const isMobile = window.innerWidth < 900
 
@@ -111,10 +110,6 @@ export function SocialIntelTab() {
   const visiblePosts = filterHandle === 'all'
     ? posts
     : posts.filter((p) => p.x_handle === filterHandle)
-
-  const handleAskAgent = (msg: string) => {
-    setChatPrefill(msg)
-  }
 
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: 0 }}>
@@ -247,7 +242,7 @@ export function SocialIntelTab() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {visiblePosts.map((post) => (
-            <PostCard key={post.id} post={post} onAskAgent={handleAskAgent} />
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       </div>
@@ -260,13 +255,13 @@ export function SocialIntelTab() {
           top: 16,
           height: 'calc(100vh - 120px)',
         }}>
-          <InlineChat prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />
+          <InlineChat posts={visiblePosts} />
         </div>
       )}
 
       {/* Mobile: floating chat button + bottom sheet */}
       {isMobile && (
-        <MobileChatSheet prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />
+        <MobileChatSheet posts={visiblePosts} />
       )}
     </div>
   )
@@ -281,26 +276,53 @@ const SOCIAL_QUICK_PROMPTS = [
   'Scan for opportunities',
 ]
 
-function InlineChat({ prefillMessage, onPrefillConsumed }: { prefillMessage?: string; onPrefillConsumed?: () => void }) {
+function buildFeedContext(posts: SocialPost[]): object[] {
+  if (posts.length === 0) return []
+  const lines = posts.map((p, i) =>
+    `${i + 1}. $${p.stock} — @${p.x_handle} (${relativeTime(p.posted_at)})\n   ${p.summary || p.content.slice(0, 300)}`
+  ).join('\n\n')
+  return [
+    {
+      role: 'user',
+      content: `Here is the current Social Intel feed I'm looking at (${posts.length} post${posts.length !== 1 ? 's' : ''}):\n\n${lines}\n\nI'll ask you questions about these posts and the stocks mentioned.`,
+    },
+    {
+      role: 'assistant',
+      content: `Got it — I've read all ${posts.length} post${posts.length !== 1 ? 's' : ''} in your feed. Ask me anything about them.`,
+    },
+  ]
+}
+
+function InlineChat({ posts }: { posts: SocialPost[] }) {
+  const contextRef = useRef<SocialPost[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: "Hi! I'm watching the feed with you. Click **Ask agent →** on any post to discuss it, or ask me anything about the stocks in your watchlist.",
+      content: posts.length > 0
+        ? `I've read all ${posts.length} post${posts.length !== 1 ? 's' : ''} in your feed. Ask me anything about them.`
+        : "I'm watching the feed with you. Once posts load, I'll have full context of every summary. Ask me anything about the stocks in your watchlist.",
     },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [apiMessages, setApiMessages] = useState<object[]>([])
+  const [apiMessages, setApiMessages] = useState<object[]>(() => buildFeedContext(posts))
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Re-inject context when posts change (e.g. after Refresh)
   useEffect(() => {
-    if (prefillMessage) {
-      setInput(prefillMessage)
-      onPrefillConsumed?.()
-      setTimeout(() => inputRef.current?.focus(), 50)
+    const prev = contextRef.current
+    const changed = posts.length !== prev.length || posts.some((p, i) => p.id !== prev[i]?.id)
+    if (!changed) return
+    contextRef.current = posts
+    setApiMessages(buildFeedContext(posts))
+    if (posts.length > 0) {
+      setMessages([{
+        role: 'assistant',
+        content: `I've read all ${posts.length} post${posts.length !== 1 ? 's' : ''} in your feed. Ask me anything about them.`,
+      }])
     }
-  }, [prefillMessage, onPrefillConsumed])
+  }, [posts])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -487,13 +509,8 @@ function InlineChat({ prefillMessage, onPrefillConsumed }: { prefillMessage?: st
 }
 
 // ── Mobile: floating chat button + slide-up sheet ─────────────────────────────
-function MobileChatSheet({ prefillMessage, onPrefillConsumed }: { prefillMessage?: string; onPrefillConsumed?: () => void }) {
+function MobileChatSheet({ posts }: { posts: SocialPost[] }) {
   const [open, setOpen] = useState(false)
-
-  // Auto-open when "Ask agent →" is clicked
-  useEffect(() => {
-    if (prefillMessage) setOpen(true)
-  }, [prefillMessage])
 
   return (
     <>
@@ -542,8 +559,8 @@ function MobileChatSheet({ prefillMessage, onPrefillConsumed }: { prefillMessage
             ×
           </button>
           {/* Inline chat fills the sheet */}
-          <div style={{ flex: 1, overflow: 'hidden', padding: '0 0 0 0' }}>
-            <InlineChat prefillMessage={prefillMessage} onPrefillConsumed={onPrefillConsumed} />
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <InlineChat posts={posts} />
           </div>
         </div>
       )}
@@ -678,12 +695,8 @@ function AddWatchlistForm({ onAdded }: { onAdded: () => void }) {
 }
 
 // ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ post, onAskAgent }: { post: SocialPost; onAskAgent: (msg: string) => void }) {
+function PostCard({ post }: { post: SocialPost }) {
   const [refExpanded, setRefExpanded] = useState(false)
-
-  const askAgent = () => {
-    onAskAgent(`Tell me more about this $${post.stock} post from @${post.x_handle}: ${post.summary || post.content.slice(0, 200)}`)
-  }
 
   return (
     <div style={{
@@ -784,18 +797,6 @@ function PostCard({ post, onAskAgent }: { post: SocialPost; onAskAgent: (msg: st
           >
             Read full post ↗
           </a>
-          <button
-            onClick={askAgent}
-            style={{
-              fontSize: 12, color: '#e6edf3', background: BLUE_BTN,
-              border: 'none', borderRadius: 6, padding: '4px 10px',
-              cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#388bfd')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = BLUE_BTN)}
-          >
-            Ask agent →
-          </button>
         </div>
       </div>
     </div>
