@@ -20,6 +20,63 @@ _BASE_STYLE = """
 """
 
 
+@router.get("/sms-optin", response_class=HTMLResponse, include_in_schema=False)
+async def sms_optin():
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS Opt-In — ThetaFlow Settings</title>
+  <style>{_BASE_STYLE}
+    .badge {{ display: inline-block; background: #dafbe1; color: #116329; font-size: 11px;
+              font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }}
+    .optin-label {{ display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+                    font-size: 14px; line-height: 1.7; color: #24292f; }}
+    .optin-label input {{ margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; }}
+    .note {{ background: #fff8c5; border: 1px solid #d4a72c; border-radius: 8px;
+             padding: 12px 16px; font-size: 13px; color: #633c01; margin-top: 20px; }}
+    .optional {{ font-size: 12px; color: #57606a; font-style: italic; margin-top: 10px; }}
+  </style>
+</head>
+<body>
+  <h1>ThetaFlow — SMS Opt-In</h1>
+  <p>This page shows the SMS consent section of the ThetaFlow Settings page, accessible after login at
+  <a href="https://theta-flows.com">theta-flows.com</a>.</p>
+
+  <div style="background:#fff;border:1px solid #d0d7de;border-radius:12px;padding:24px;margin:24px 0">
+    <h2 style="margin:0 0 8px">📱 SMS Trading Alerts <span class="badge">OPTIONAL</span></h2>
+    <p>Receive SMS alerts for price movements, position updates, and trade confirmations.
+       Reply YES/NO to act on alerts directly from your phone.</p>
+
+    <label class="optin-label">
+      <input type="checkbox" id="sms-consent">
+      <span>
+        I agree to receive SMS trading alerts from <strong>ThetaFlow</strong>.
+        Message frequency varies (up to 10 messages per trading day based on market activity).
+        Message and data rates may apply.
+        Reply <strong>STOP</strong> to unsubscribe at any time.
+        Reply <strong>HELP</strong> for help.
+        &nbsp;<a href="/privacy">Privacy Policy</a> &nbsp;&middot;&nbsp;
+        <a href="/terms">Terms of Service</a>
+      </span>
+    </label>
+
+    <p class="optional">&#10003; You can use ThetaFlow without SMS alerts &mdash; this consent is completely optional.</p>
+  </div>
+
+  <div class="note">
+    <strong>Note for reviewers:</strong> ThetaFlow is a single-user private trading application.
+    The SMS consent checkbox is <strong>unchecked by default</strong>. The user may save settings
+    and use the full application without checking this box. Checking this box is the only way
+    SMS alerts are enabled.
+  </div>
+
+  <footer>ThetaFlow &mdash; Private automated trading system</footer>
+</body>
+</html>""")
+
+
 @router.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
 async def privacy_policy():
     return HTMLResponse(f"""<!DOCTYPE html>

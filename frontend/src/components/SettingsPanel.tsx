@@ -236,8 +236,8 @@ export function SettingsPanel() {
           <span style={{ color: '#e6edf3', fontSize: 13, lineHeight: 1.6 }}>
             I agree to receive SMS trading alerts from <strong>ThetaFlow</strong>. Message frequency varies (up to 10 messages per trading day based on market activity). Message and data rates may apply.{' '}
             Reply <strong>STOP</strong> to unsubscribe at any time. Reply <strong>HELP</strong> for help.{' '}
-            <a href="https://venerable-begonia-27ed92.netlify.app/privacy.html" target="_blank" rel="noreferrer" style={{ color: BLUE_BTN }}>Privacy Policy</a>{' · '}
-            <a href="https://venerable-begonia-27ed92.netlify.app/terms.html" target="_blank" rel="noreferrer" style={{ color: BLUE_BTN }}>Terms of Service</a>
+            <a href="https://theta-flows.com/privacy" target="_blank" rel="noreferrer" style={{ color: BLUE_BTN }}>Privacy Policy</a>{' · '}
+            <a href="https://theta-flows.com/terms" target="_blank" rel="noreferrer" style={{ color: BLUE_BTN }}>Terms of Service</a>
           </span>
         </label>
 
