@@ -218,6 +218,38 @@ export function SettingsPanel() {
         )}
       </div>
 
+      {/* SMS Alerts Opt-In */}
+      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
+        <h2 style={{ margin: '0 0 4px', color: '#e6edf3', fontSize: 16, fontWeight: 600 }}>📱 SMS Trading Alerts</h2>
+        <p style={{ color: MUTED, fontSize: 13, margin: '0 0 16px' }}>
+          Receive SMS alerts for price movements, position updates, and trade confirmations. Reply YES/NO to act on alerts directly from your phone.
+        </p>
+
+        {/* Compliant opt-in checkbox */}
+        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', marginBottom: 16 }}>
+          <input
+            type="checkbox"
+            id="sms-consent"
+            defaultChecked={false}
+            style={{ marginTop: 2, width: 16, height: 16, cursor: 'pointer', accentColor: BLUE_BTN }}
+          />
+          <span style={{ color: '#e6edf3', fontSize: 13, lineHeight: 1.6 }}>
+            I agree to receive SMS trading alerts from <strong>ThetaFlow</strong>. Message frequency varies (up to 10 messages per trading day based on market activity). Message and data rates may apply.{' '}
+            Reply <strong>STOP</strong> to unsubscribe at any time. Reply <strong>HELP</strong> for help.{' '}
+            <a href="https://venerable-begonia-27ed92.netlify.app/privacy.html" target="_blank" rel="noreferrer" style={{ color: BLUE_BTN }}>Privacy Policy</a>{' · '}
+            <a href="https://venerable-begonia-27ed92.netlify.app/terms.html" target="_blank" rel="noreferrer" style={{ color: BLUE_BTN }}>Terms of Service</a>
+          </span>
+        </label>
+
+        <p style={{ color: MUTED, fontSize: 11, margin: '0 0 12px', fontStyle: 'italic' }}>
+          You can use ThetaFlow without SMS alerts — this consent is optional.
+        </p>
+
+        <div style={{ background: '#0d1117', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: MUTED }}>
+          Alert phone number is configured via the <code style={{ color: '#e6edf3' }}>ALERT_PHONE_NUMBER</code> environment variable on the server.
+        </div>
+      </div>
+
       {/* How to reconnect info */}
       <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
         <h2 style={{ margin: '0 0 12px', color: '#e6edf3', fontSize: 16, fontWeight: 600 }}>How to reconnect</h2>
