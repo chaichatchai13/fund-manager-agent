@@ -26,19 +26,26 @@ const GREEN = '#3fb950'
 const RED = '#f85149'
 const BLUE_BTN = '#1f6feb'
 
+// ── Mobile detection hook ─────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return isMobile
+}
+
 export default function App() {
   const { authenticated, loading: authLoading, recheck, logout } = useAuth()
-
-  // Show nothing while checking auth (avoids flash of login page on hard refresh)
   if (authLoading) return null
-
-  // Show login page if not authenticated — main app not rendered (no API calls fire)
   if (!authenticated) return <LoginPage onLogin={recheck} />
-
   return <Dashboard logout={logout} />
 }
 
 function Dashboard({ logout }: { logout: () => void }) {
+  const isMobile = useIsMobile()
   const [tab, setTab] = useState<Tab>('dashboard')
   const { positions, connected, setPositions } = useWebSocket()
   const [summary, setSummary] = useState<PerformanceSummary | null>(null)
@@ -47,41 +54,33 @@ function Dashboard({ logout }: { logout: () => void }) {
 
   usePushNotifications()
 
-  // "Ask agent →" button in SocialIntelTab fires this event to open chat with a pre-filled message
   useEffect(() => {
     const handler = (e: Event) => {
       const msg = (e as CustomEvent<{ message: string }>).detail?.message
-      if (msg) {
-        setChatPrefill(msg)
-        setTab('chat')
-      }
+      if (msg) { setChatPrefill(msg); setTab('chat') }
     }
     window.addEventListener('open-chat', handler)
     return () => window.removeEventListener('open-chat', handler)
   }, [])
 
   useEffect(() => {
-    fetch('/api/performance/summary?period=today').then((r) => r.json()).then(setSummary).catch(() => {})
+    fetch('/api/performance/summary?period=today').then(r => r.json()).then(setSummary).catch(() => {})
   }, [])
 
   useEffect(() => {
-    fetch('/api/account').then((r) => r.json()).then(setAccount).catch(() => {})
+    fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {})
   }, [])
 
   const closePosition = async (positionId: string) => {
     const price = prompt('Enter limit price for buy-to-close (leave blank for auto):')
     const body: Record<string, number> = {}
     if (price) body.limit_price = parseFloat(price)
-    await fetch(`/api/positions/${positionId}/close`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    await fetch(`/api/positions/${positionId}/close`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }
 
   const deletePosition = async (positionId: string) => {
     await fetch(`/api/positions/${positionId}`, { method: 'DELETE' })
-    setPositions((prev) => prev.filter((p: OptionPosition) => p.id !== positionId))
+    setPositions(prev => prev.filter((p: OptionPosition) => p.id !== positionId))
   }
 
   const rollPosition = async (positionId: string) => {
@@ -97,7 +96,6 @@ function Dashboard({ logout }: { logout: () => void }) {
   }
 
   const refreshPositions = async () => {
-    // Re-fetch only active positions after reconciliation (OPEN + CLOSING)
     const res = await fetch('/api/positions?status=OPEN')
     if (res.ok) {
       const open = await res.json()
@@ -107,33 +105,31 @@ function Dashboard({ logout }: { logout: () => void }) {
     }
   }
 
-  const openPositions = positions.filter((p) => p.status === 'OPEN' || p.status === 'CLOSING')
+  const openPositions = positions.filter(p => p.status === 'OPEN' || p.status === 'CLOSING')
   const totalCredit = openPositions.reduce((sum, p) => sum + p.total_credit, 0)
   const unrealizedPnl = openPositions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0)
-
   const portfolioValue = account?.portfolio_value ?? null
   const buyingPower = account?.buying_power ?? null
   const dayPnl = summary?.total_pnl ?? null
 
   const fmt = (n: number | null, signed = false) =>
-    n == null
-      ? '—'
-      : `${signed && n >= 0 ? '+' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    n == null ? '—' : `${signed && n >= 0 ? '+' : ''}$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'positions', label: `Positions (${openPositions.length})` },
-    { id: 'rules', label: 'Rules' },
-    { id: 'chat', label: 'Agent Chat' },
-    { id: 'social', label: 'Social Intel' },
-    { id: 'alerts', label: 'Alerts' },
-    { id: 'settings', label: 'Settings' },
+  // Mobile: short labels to fit the tab bar
+  const tabs: { id: Tab; label: string; mobileLabel: string }[] = [
+    { id: 'dashboard',  label: 'Dashboard',    mobileLabel: '⊞ Home'     },
+    { id: 'positions',  label: `Positions (${openPositions.length})`, mobileLabel: `📋 Pos (${openPositions.length})` },
+    { id: 'rules',      label: 'Rules',         mobileLabel: '⚙ Rules'   },
+    { id: 'chat',       label: 'Agent Chat',    mobileLabel: '💬 Chat'    },
+    { id: 'social',     label: 'Social Intel',  mobileLabel: '📡 Social'  },
+    { id: 'alerts',     label: 'Alerts',        mobileLabel: '🔔 Alerts'  },
+    { id: 'settings',   label: 'Settings',      mobileLabel: '⚙ Config'  },
   ]
 
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 16px',
+    padding: isMobile ? '8px 12px' : '8px 16px',
     borderRadius: 6,
-    fontSize: 13,
+    fontSize: isMobile ? 12 : 13,
     fontWeight: 500,
     cursor: 'pointer',
     border: 'none',
@@ -141,6 +137,8 @@ function Dashboard({ logout }: { logout: () => void }) {
     color: active ? '#fff' : MUTED,
     transition: 'all 0.15s',
     fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   })
 
   return (
@@ -153,123 +151,146 @@ function Dashboard({ logout }: { logout: () => void }) {
         position: 'sticky',
         top: 0,
         zIndex: 40,
-        padding: '10px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
       }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <ThetaFlowLogo size={32} />
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 18, letterSpacing: '-0.3px' }}>
-            Theta<span style={{ color: '#3fb950' }}>Flow</span>
-          </span>
-          <span style={{ background: '#21262d', color: MUTED, fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>
-            {connected ? 'LIVE' : 'OFFLINE'}
-          </span>
+        {/* Top row: Logo + stats + sign out */}
+        <div style={{
+          padding: isMobile ? '10px 16px' : '10px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <ThetaFlowLogo size={isMobile ? 26 : 32} />
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: isMobile ? 16 : 18, letterSpacing: '-0.3px' }}>
+              Theta<span style={{ color: GREEN }}>Flow</span>
+            </span>
+            <span style={{
+              background: connected ? '#1a3028' : '#21262d',
+              color: connected ? GREEN : MUTED,
+              fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
+            }}>
+              {connected ? 'LIVE' : 'OFFLINE'}
+            </span>
+          </div>
+
+          {/* Stats row (desktop: inline | mobile: compact) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 20, fontSize: 13 }}>
+            <HeaderStat label="Portfolio" value={fmt(portfolioValue)} isMobile={isMobile} />
+            {!isMobile && (
+              <HeaderStat label="Day P&L" value={fmt(dayPnl, true)}
+                valueColor={dayPnl == null ? '#e6edf3' : dayPnl >= 0 ? GREEN : RED} isMobile={false} />
+            )}
+            {!isMobile && <HeaderStat label="Buying Power" value={fmt(buyingPower)} isMobile={false} />}
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: connected ? GREEN : RED,
+              display: 'inline-block',
+              animation: connected ? 'pulse 2s infinite' : 'none',
+              flexShrink: 0,
+            }} />
+            <button onClick={logout} style={{
+              background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6,
+              color: MUTED, fontSize: 12, padding: '4px 10px',
+              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#e6edf3')}
+              onMouseLeave={e => (e.currentTarget.style.color = MUTED)}
+            >
+              {isMobile ? '↩' : 'Sign out'}
+            </button>
+          </div>
         </div>
 
-        {/* Nav tabs */}
-        <nav style={{ display: 'flex', gap: 4 }}>
-          {tabs.map((t) => (
+        {/* Mobile: compact stats bar */}
+        {isMobile && (
+          <div style={{
+            display: 'flex', gap: 0, borderTop: `1px solid #21262d`,
+          }}>
+            {[
+              { label: 'Day P&L', value: fmt(dayPnl, true), color: dayPnl == null ? '#e6edf3' : dayPnl >= 0 ? GREEN : RED },
+              { label: 'Buying Power', value: fmt(buyingPower), color: '#e6edf3' },
+              { label: 'Positions', value: String(openPositions.length), color: '#e6edf3' },
+            ].map((s, i) => (
+              <div key={i} style={{
+                flex: 1, textAlign: 'center', padding: '6px 8px',
+                borderRight: i < 2 ? `1px solid #21262d` : 'none',
+              }}>
+                <div style={{ color: MUTED, fontSize: 10 }}>{s.label}</div>
+                <div style={{ color: s.color, fontWeight: 700, fontSize: 13 }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Nav tabs — horizontally scrollable on mobile */}
+        <nav style={{
+          display: 'flex',
+          gap: 4,
+          padding: isMobile ? '8px 12px' : '0 24px 10px',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          borderTop: isMobile ? `1px solid #21262d` : 'none',
+        }}>
+          {tabs.map(t => (
             <button key={t.id} style={tabBtnStyle(tab === t.id)} onClick={() => setTab(t.id)}>
-              {t.label}
+              {isMobile ? t.mobileLabel : t.label}
             </button>
           ))}
         </nav>
-
-        {/* Header stats */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: 13 }}>
-          <HeaderStat label="Portfolio" value={fmt(portfolioValue)} />
-          <HeaderStat
-            label="Day P&L"
-            value={fmt(dayPnl, true)}
-            valueColor={dayPnl == null ? '#e6edf3' : dayPnl >= 0 ? GREEN : RED}
-          />
-          <HeaderStat label="Buying Power" value={fmt(buyingPower)} />
-          {/* Live dot */}
-          <span style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: connected ? GREEN : RED,
-            display: 'inline-block',
-            animation: connected ? 'pulse 2s infinite' : 'none',
-          }} />
-          <button
-            onClick={logout}
-            style={{
-              background: 'none', border: '1px solid #30363d', borderRadius: 6,
-              color: '#8b949e', fontSize: 12, padding: '4px 10px',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#e6edf3')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#8b949e')}
-          >
-            Sign out
-          </button>
-        </div>
       </header>
 
       {/* ── Main content ── */}
-      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <main style={{
+        maxWidth: 1280,
+        margin: '0 auto',
+        padding: isMobile ? '12px' : '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? 12 : 20,
+      }}>
 
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && (
           <>
-            {/* Stat cards row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-              <StatCard
-                label="Total Portfolio Value"
-                value={fmt(portfolioValue)}
-                sub={unrealizedPnl !== 0 ? `Unrealized P&L: ${fmt(unrealizedPnl, true)}` : undefined}
-                subColor={unrealizedPnl >= 0 ? GREEN : RED}
-              />
-              <StatCard
-                label="Open Positions"
-                value={String(openPositions.length)}
-                sub={`${positions.filter((p) => p.status === 'OPEN').length} OPEN · ${positions.filter((p) => p.status === 'CLOSING').length} CLOSING`}
-              />
-              <StatCard
-                label="Total Premium Collected"
-                value={`$${totalCredit.toFixed(2)}`}
-                sub={unrealizedPnl !== 0 ? `▲ Unrealized P&L: ${fmt(unrealizedPnl, true)}` : undefined}
-                subColor={GREEN}
-              />
-              <StatCard
-                label="Win Rate (All Time)"
-                value={summary?.win_rate != null ? `${summary.win_rate}%` : '—'}
-                sub={summary?.trades_closed != null ? `${summary.trades_closed} trades closed` : undefined}
-              />
+            {/* Stat cards: 2-col on mobile, 4-col on desktop */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 10 : 16 }}>
+              <StatCard label="Portfolio Value" value={fmt(portfolioValue)}
+                sub={unrealizedPnl !== 0 ? `Unrealized: ${fmt(unrealizedPnl, true)}` : undefined}
+                subColor={unrealizedPnl >= 0 ? GREEN : RED} />
+              <StatCard label="Open Positions" value={String(openPositions.length)}
+                sub={`${positions.filter(p => p.status === 'OPEN').length} open · ${positions.filter(p => p.status === 'CLOSING').length} closing`} />
+              <StatCard label="Premium Collected" value={`$${totalCredit.toFixed(2)}`}
+                sub={unrealizedPnl !== 0 ? `▲ ${fmt(unrealizedPnl, true)}` : undefined} subColor={GREEN} />
+              <StatCard label="Win Rate" value={summary?.win_rate != null ? `${summary.win_rate}%` : '—'}
+                sub={summary?.trades_closed != null ? `${summary.trades_closed} trades` : undefined} />
             </div>
 
-            {/* Holdings + Chart row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+            {/* Holdings + Chart: stacked on mobile */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: isMobile ? 12 : 16 }}>
               <AccountHoldings />
-              <PnlChart />
+              {!isMobile && <PnlChart />}
             </div>
+            {isMobile && <PnlChart />}
 
-            {/* Positions table */}
-            <PositionsTable positions={openPositions} connected={connected} onClosePosition={closePosition} onDeletePosition={deletePosition} onRollPosition={rollPosition} onReconcile={refreshPositions} />
+            <PositionsTable positions={openPositions} connected={connected}
+              onClosePosition={closePosition} onDeletePosition={deletePosition}
+              onRollPosition={rollPosition} onReconcile={refreshPositions} />
           </>
         )}
 
-        {/* ── POSITIONS ── */}
         {tab === 'positions' && (
-          <PositionsTable positions={positions} connected={connected} onClosePosition={closePosition} onDeletePosition={deletePosition} onRollPosition={rollPosition} onReconcile={refreshPositions} />
+          <PositionsTable positions={positions} connected={connected}
+            onClosePosition={closePosition} onDeletePosition={deletePosition}
+            onRollPosition={rollPosition} onReconcile={refreshPositions} />
         )}
 
-        {/* ── RULES ── */}
-        {tab === 'rules' && <RulesPanel />}
-
-        {/* ── CHAT ── */}
-        {tab === 'chat' && <ChatPane prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />}
-
-        {/* ── SOCIAL INTEL ── */}
-        {tab === 'social' && <SocialIntelTab />}
-
-        {/* ── ALERTS ── */}
-        {tab === 'alerts' && <AlertsPanel />}
-
-        {/* ── SETTINGS ── */}
+        {tab === 'rules'    && <RulesPanel />}
+        {tab === 'chat'     && <ChatPane prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />}
+        {tab === 'social'   && <SocialIntelTab />}
+        {tab === 'alerts'   && <AlertsPanel />}
         {tab === 'settings' && <SettingsPanel />}
 
       </main>
@@ -279,7 +300,8 @@ function Dashboard({ logout }: { logout: () => void }) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function HeaderStat({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function HeaderStat({ label, value, valueColor, isMobile }: { label: string; value: string; valueColor?: string; isMobile: boolean }) {
+  if (isMobile) return null  // Mobile stats shown in compact bar below
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ color: MUTED, fontSize: 11 }}>{label}</div>
@@ -288,25 +310,12 @@ function HeaderStat({ label, value, valueColor }: { label: string; value: string
   )
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  subColor,
-}: {
-  label: string
-  value: string
-  sub?: string
-  subColor?: string
-}) {
+function StatCard({ label, value, sub, subColor }: { label: string; value: string; sub?: string; subColor?: string }) {
   return (
-    <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '16px 18px' }}>
-      <div style={{ color: MUTED, fontSize: 12, marginBottom: 4 }}>{label}</div>
-      <div style={{ color: '#e6edf3', fontSize: 22, fontWeight: 700 }}>{value}</div>
-      {sub && (
-        <div style={{ color: subColor ?? MUTED, fontSize: 12, marginTop: 4 }}>{sub}</div>
-      )}
+    <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '14px 16px' }}>
+      <div style={{ color: MUTED, fontSize: 11, marginBottom: 4 }}>{label}</div>
+      <div style={{ color: '#e6edf3', fontSize: 20, fontWeight: 700 }}>{value}</div>
+      {sub && <div style={{ color: subColor ?? MUTED, fontSize: 11, marginTop: 4 }}>{sub}</div>}
     </div>
   )
 }
-
