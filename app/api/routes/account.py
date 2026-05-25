@@ -63,6 +63,14 @@ def _parse_holdings(positions: list) -> list:
 @router.get("")
 async def get_account():
     from app.schwab.client import schwab_client
+    if not schwab_client.is_connected:
+        return {
+            "portfolio_value": None,
+            "buying_power": None,
+            "cash_balance": None,
+            "holdings": [],
+            "schwab_connected": False,
+        }
     account = await schwab_client.get_account()
     securities = account.get("securitiesAccount", {})
     balances = securities.get("currentBalances", {})
@@ -73,6 +81,7 @@ async def get_account():
         "buying_power": balances.get("buyingPower"),
         "cash_balance": balances.get("cashBalance"),
         "holdings": _parse_holdings(positions),
+        "schwab_connected": True,
     }
 
 
