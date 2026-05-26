@@ -8,11 +8,22 @@ const CARD: React.CSSProperties = {
   overflow: 'hidden',
 }
 
+function useIsMobile(bp = 768) {
+  const [m, setM] = useState(() => window.innerWidth < bp)
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < bp)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [bp])
+  return m
+}
+
 export function RulesPanel() {
   const [rules, setRules] = useState<SellPutRule[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editingRule, setEditingRule] = useState<SellPutRule | null>(null)
+  const isMobile = useIsMobile()
 
   const fetchRules = async () => {
     const res = await fetch('/api/rules')
@@ -80,6 +91,7 @@ export function RulesPanel() {
       {/* Create modal */}
       {showCreate && (
         <RuleFormModal
+          isMobile={isMobile}
           onSaved={() => { setShowCreate(false); fetchRules() }}
           onCancel={() => setShowCreate(false)}
         />
@@ -88,6 +100,7 @@ export function RulesPanel() {
       {/* Edit modal */}
       {editingRule && (
         <RuleFormModal
+          isMobile={isMobile}
           existingRule={editingRule}
           onSaved={() => { setEditingRule(null); fetchRules() }}
           onCancel={() => setEditingRule(null)}
@@ -256,10 +269,12 @@ function RuleFormModal({
   existingRule,
   onSaved,
   onCancel,
+  isMobile = false,
 }: {
   existingRule?: SellPutRule
   onSaved: () => void
   onCancel: () => void
+  isMobile?: boolean
 }) {
   const isEdit = !!existingRule
 
@@ -393,8 +408,14 @@ function RuleFormModal({
   })
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-      <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 12, padding: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 50 }}>
+      <div style={{
+        background: '#161b22', border: '1px solid #30363d',
+        borderRadius: isMobile ? '16px 16px 0 0' : 12,
+        padding: isMobile ? '20px 16px' : 24,
+        width: '100%', maxWidth: isMobile ? '100%' : 560,
+        maxHeight: isMobile ? '95vh' : '90vh', overflowY: 'auto',
+      }}>
 
         {/* Title */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -434,7 +455,7 @@ function RuleFormModal({
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
           {field('Rule Name', 'name')}
           {field('Symbols (comma-separated, priority order)', 'symbolsText')}
           {field('Min DTE', 'min_dte', 'number')}
@@ -545,7 +566,7 @@ function RuleFormModal({
               <div style={{ padding: '8px 12px', background: '#2d2214', border: '1px solid #d2992244', borderRadius: 8, fontSize: 12, color: '#d29922', marginBottom: 12 }}>
                 🔄 When ITM and DTE ≤ threshold, ThetaFlow will BTC the current position and STO a new OTM option at the closest available premium.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#8b949e', marginBottom: 4 }}>
                     Roll when DTE ≤

@@ -1,5 +1,15 @@
 import { useEffect, useState, useCallback } from 'react'
 
+function useIsMobile(bp = 768) {
+  const [m, setM] = useState(() => window.innerWidth < bp)
+  useEffect(() => {
+    const h = () => setM(window.innerWidth < bp)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [bp])
+  return m
+}
+
 const CARD_BG = '#161b22'
 const BORDER = '#30363d'
 const MUTED = '#8b949e'
@@ -40,6 +50,7 @@ export function SettingsPanel() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const isMobile = useIsMobile()
 
   const fetchStatus = async () => {
     try {
@@ -120,7 +131,7 @@ export function SettingsPanel() {
       <AIModelCard />
 
       {/* Schwab Connection Card */}
-      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
+      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: isMobile ? '16px 14px' : '20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ margin: 0, color: '#e6edf3', fontSize: 16, fontWeight: 600 }}>Schwab Connection</h2>
           <span style={{
@@ -137,7 +148,7 @@ export function SettingsPanel() {
         </div>
 
         {/* Status grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 20 }}>
           <StatusRow label="Account" value={status?.account_hash_preview ?? '—'} />
           <StatusRow label="Token file" value={status?.token_file_exists ? 'Present' : 'Missing'} valueColor={status?.token_file_exists ? GREEN : RED} />
           <StatusRow
@@ -193,24 +204,26 @@ export function SettingsPanel() {
         )}
 
         {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
           <ActionButton
             label="Reconnect via Schwab OAuth"
             onClick={handleReconnect}
             disabled={!!actionLoading || !!status?.mock_mode}
-            primary
+            primary fullWidth={isMobile}
           />
           <ActionButton
             label={actionLoading === 'refresh' ? 'Refreshing…' : 'Refresh Access Token'}
             onClick={handleRefresh}
             disabled={!!actionLoading || !!status?.mock_mode || refreshExpired}
             title={refreshExpired ? 'Refresh token expired — use Reconnect instead' : undefined}
+            fullWidth={isMobile}
           />
           <ActionButton
             label={actionLoading === 'reinit' ? 'Reconnecting…' : 'Reinitialize Client'}
             onClick={handleReinitialize}
             disabled={!!actionLoading}
             title="Re-read token from DB/file without OAuth flow"
+            fullWidth={isMobile}
           />
         </div>
 
@@ -222,7 +235,7 @@ export function SettingsPanel() {
       </div>
 
       {/* SMS Alerts Opt-In */}
-      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
+      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: isMobile ? '16px 14px' : '20px 24px' }}>
         <h2 style={{ margin: '0 0 4px', color: '#e6edf3', fontSize: 16, fontWeight: 600 }}>📱 SMS Trading Alerts</h2>
         <p style={{ color: MUTED, fontSize: 13, margin: '0 0 16px' }}>
           Receive SMS alerts for price movements, position updates, and trade confirmations. Reply YES/NO to act on alerts directly from your phone.
@@ -254,7 +267,7 @@ export function SettingsPanel() {
       </div>
 
       {/* How to reconnect info */}
-      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
+      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: isMobile ? '16px 14px' : '20px 24px' }}>
         <h2 style={{ margin: '0 0 12px', color: '#e6edf3', fontSize: 16, fontWeight: 600 }}>How to reconnect</h2>
         <ol style={{ color: MUTED, fontSize: 13, margin: 0, paddingLeft: 20, lineHeight: 2 }}>
           <li>Make sure <code style={{ color: '#e6edf3' }}>SCHWAB_CALLBACK_URL</code> in your <code style={{ color: '#e6edf3' }}>.env</code> points to <code style={{ color: '#e6edf3' }}>https://yourdomain.com/api/schwab/callback</code></li>
@@ -404,13 +417,14 @@ function AIModelCard() {
 }
 
 function ActionButton({
-  label, onClick, disabled, primary, title,
+  label, onClick, disabled, primary, title, fullWidth,
 }: {
   label: string
   onClick: () => void
   disabled?: boolean
   primary?: boolean
   title?: string
+  fullWidth?: boolean
 }) {
   return (
     <button
@@ -418,7 +432,7 @@ function ActionButton({
       disabled={disabled}
       title={title}
       style={{
-        padding: '8px 16px',
+        padding: '10px 16px',
         borderRadius: 8,
         fontSize: 13,
         fontWeight: 500,
@@ -429,6 +443,8 @@ function ActionButton({
         opacity: disabled ? 0.6 : 1,
         fontFamily: 'inherit',
         transition: 'all 0.15s',
+        width: fullWidth ? '100%' : undefined,
+        textAlign: 'center',
       }}
     >
       {label}

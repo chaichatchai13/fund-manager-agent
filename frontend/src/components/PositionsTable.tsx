@@ -59,8 +59,8 @@ function StatusBadge({ status }: { status: string }) {
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} style={{
-      padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500,
-      cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+      padding: '5px 11px', borderRadius: 6, fontSize: 12, fontWeight: 500,
+      cursor: 'pointer', border: 'none', fontFamily: 'inherit', whiteSpace: 'nowrap',
       background: active ? '#1f6feb' : '#21262d',
       color: active ? '#fff' : MUTED,
       transition: 'all 0.15s',
@@ -68,26 +68,144 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   )
 }
 
+// ── Mobile: position card ──────────────────────────────────────────────────────
+function PositionCard({
+  p, showActions, onClose, onDelete, onRoll,
+}: {
+  p: OptionPosition; showActions: boolean
+  onClose?: () => void; onDelete?: () => void; onRoll?: () => void
+}) {
+  const pnlPositive = (p.unrealized_pnl ?? 0) >= 0
+  const pct = p.unrealized_pnl != null && p.total_credit > 0
+    ? (p.unrealized_pnl / p.total_credit) * 100 : null
+  const barW = pct == null ? 0 : Math.min(100, Math.max(0, (pct / 75) * 100))
+  const barColor = pct == null || pct < 0 ? RED : pct >= 60 ? GREEN : YELLOW
+
+  return (
+    <div style={{
+      background: '#1c2128', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 14px',
+    }}>
+      {/* Symbol + status */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontWeight: 700, color: '#e6edf3', fontSize: 16 }}>{p.underlying_symbol}</span>
+          <span style={{ color: MUTED, fontSize: 11 }}>{p.dte_at_entry} DTE · {p.contracts} contract{p.contracts !== 1 ? 's' : ''}</span>
+        </div>
+        <StatusBadge status={p.status} />
+      </div>
+
+      {/* Strike / expiry */}
+      <div style={{ color: '#58a6ff', fontSize: 12, fontFamily: 'monospace', marginBottom: 10 }}>
+        ${p.strike} · {p.expiration_date}
+      </div>
+
+      {/* P&L row */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 13 }}>
+        <span style={{ color: MUTED }}>Entry <span style={{ color: '#e6edf3', fontWeight: 600 }}>${fmt(p.premium_received)}</span></span>
+        {p.current_price != null && (
+          <span style={{ color: MUTED }}>Now <span style={{ color: '#e6edf3', fontWeight: 600 }}>${fmt(p.current_price)}</span></span>
+        )}
+      </div>
+
+      {p.unrealized_pnl != null && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+            <span style={{ color: pnlPositive ? GREEN : RED, fontWeight: 700, fontSize: 14 }}>
+              {pnlPositive ? '+' : '-'}${fmt(p.unrealized_pnl)}
+            </span>
+            {pct != null && (
+              <span style={{ color: pnlPositive ? GREEN : RED, fontWeight: 600, fontSize: 13 }}>
+                {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <div style={{ background: '#21262d', borderRadius: 3, height: 5, marginBottom: 3 }}>
+            <div style={{ background: barColor, width: `${barW}%`, height: 5, borderRadius: 3, transition: 'width 0.4s' }} />
+          </div>
+          <div style={{ color: '#484f58', fontSize: 10, marginBottom: 10 }}>
+            {pct != null ? `${pct.toFixed(0)}% toward 75% target` : '—'}
+          </div>
+        </>
+      )}
+
+      <div style={{ color: '#484f58', fontSize: 11, marginBottom: showActions ? 10 : 0 }}>
+        Opened {relDate(p.opened_at)}{p.closed_at ? ` · Closed ${relDate(p.closed_at)}` : ''}
+      </div>
+
+      {/* Actions */}
+      {showActions && (
+        <div style={{ display: 'flex', gap: 8, borderTop: `1px solid #21262d`, paddingTop: 10 }}>
+          {p.status === 'OPEN' && onRoll && (
+            <button onClick={() => { if (confirm(`Roll "${p.option_symbol}"?`)) onRoll() }}
+              style={{
+                flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 600,
+                background: '#2d2a14', color: YELLOW, border: `1px solid ${YELLOW}44`,
+                borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              }}>↻ Roll</button>
+          )}
+          {(p.status === 'OPEN' || p.status === 'CLOSING') && onClose && (
+            <button onClick={onClose}
+              style={{
+                flex: 1, padding: '8px 0', fontSize: 13, fontWeight: 600,
+                background: '#2d1414', color: RED, border: `1px solid ${RED}44`,
+                borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              }}>✕ Close</button>
+          )}
+          <button onClick={() => { if (confirm(`Remove "${p.option_symbol}" from ThetaFlow?`)) onDelete?.() }}
+            style={{
+              padding: '8px 12px', fontSize: 13, fontWeight: 600,
+              background: '#21262d', color: '#484f58', border: `1px solid ${BORDER}`,
+              borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+            }}>⊗</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Mobile: order card ─────────────────────────────────────────────────────────
+function OrderCard({ o }: { o: Order }) {
+  return (
+    <div style={{
+      background: '#1c2128', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 14px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+        <span style={{ fontWeight: 700, color: '#e6edf3', fontSize: 14, fontFamily: 'monospace' }}>{o.symbol}</span>
+        <StatusBadge status={o.status} />
+      </div>
+      <div style={{ display: 'flex', gap: 14, fontSize: 12, flexWrap: 'wrap' }}>
+        <span style={{ color: MUTED }}>Qty <span style={{ color: '#e6edf3', fontWeight: 600 }}>{o.quantity}</span></span>
+        <span style={{ color: MUTED }}>{o.order_type}</span>
+        <span style={{ color: o.is_gtc ? '#79c0ff' : MUTED, fontWeight: 600 }}>{o.is_gtc ? 'GTC' : 'DAY'}</span>
+        {o.limit_price != null && <span style={{ color: MUTED }}>Limit <span style={{ color: '#e6edf3', fontWeight: 600 }}>${fmt(o.limit_price)}</span></span>}
+        {o.fill_price != null && <span style={{ color: GREEN, fontWeight: 600 }}>Filled ${fmt(o.fill_price)}</span>}
+      </div>
+      <div style={{ color: '#484f58', fontSize: 11, marginTop: 5 }}>{relDate(o.created_at)}</div>
+    </div>
+  )
+}
+
+// ── Filter bar ─────────────────────────────────────────────────────────────────
 function FilterBar({
   symbolFilter, onSymbolChange,
   dateFrom, dateTo, onDateFrom, onDateTo,
   sortField, sortDir, onSort,
-  showDateFilter,
+  showDateFilter, isMobile,
 }: {
   symbolFilter: string; onSymbolChange: (v: string) => void
   dateFrom: string; dateTo: string; onDateFrom: (v: string) => void; onDateTo: (v: string) => void
   sortField: SortField; sortDir: SortDir; onSort: (f: SortField) => void
-  showDateFilter: boolean
+  showDateFilter: boolean; isMobile: boolean
 }) {
   const sortBtn = (field: SortField, label: string) => {
     const active = sortField === field
     return (
       <button onClick={() => onSort(field)} style={{
-        padding: '4px 10px', fontSize: 11, borderRadius: 5,
+        padding: '4px 8px', fontSize: 11, borderRadius: 5,
         border: `1px solid ${active ? BLUE : BORDER}`,
         background: active ? '#1f2d3d' : '#21262d',
         color: active ? BLUE : MUTED,
-        cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+        cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
       }}>
         {label} {active ? (sortDir === 'asc' ? '↑' : '↓') : ''}
       </button>
@@ -95,38 +213,38 @@ function FilterBar({
   }
 
   return (
-    <div style={{ padding: '10px 16px', borderBottom: `1px solid #21262d`, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', background: '#0d1117' }}>
-      {/* Symbol search */}
+    <div style={{
+      padding: isMobile ? '10px 12px' : '10px 16px',
+      borderBottom: `1px solid #21262d`,
+      display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+      background: '#0d1117',
+    }}>
       <input
         value={symbolFilter}
         onChange={e => onSymbolChange(e.target.value)}
-        placeholder="Filter by ticker…"
+        placeholder="Filter ticker…"
         style={{
-          padding: '4px 10px', fontSize: 12, background: '#21262d',
+          padding: '5px 10px', fontSize: 12, background: '#21262d',
           border: `1px solid ${BORDER}`, borderRadius: 6, color: '#e6edf3',
-          outline: 'none', width: 150, fontFamily: 'inherit',
+          outline: 'none', width: isMobile ? '100%' : 150, fontFamily: 'inherit', boxSizing: 'border-box',
         }}
         onFocus={e => (e.currentTarget.style.borderColor = BLUE)}
         onBlur={e => (e.currentTarget.style.borderColor = BORDER)}
       />
 
-      {/* Date range — only for closed tab */}
       {showDateFilter && (
         <>
-          <span style={{ color: MUTED, fontSize: 11 }}>From</span>
           <input type="date" value={dateFrom} onChange={e => onDateFrom(e.target.value)}
-            style={{ padding: '4px 8px', fontSize: 12, background: '#21262d', border: `1px solid ${BORDER}`, borderRadius: 6, color: '#e6edf3', outline: 'none', fontFamily: 'inherit', colorScheme: 'dark' }} />
-          <span style={{ color: MUTED, fontSize: 11 }}>To</span>
+            style={{ padding: '5px 8px', fontSize: 12, background: '#21262d', border: `1px solid ${BORDER}`, borderRadius: 6, color: '#e6edf3', outline: 'none', fontFamily: 'inherit', colorScheme: 'dark', flex: 1 }} />
           <input type="date" value={dateTo} onChange={e => onDateTo(e.target.value)}
-            style={{ padding: '4px 8px', fontSize: 12, background: '#21262d', border: `1px solid ${BORDER}`, borderRadius: 6, color: '#e6edf3', outline: 'none', fontFamily: 'inherit', colorScheme: 'dark' }} />
+            style={{ padding: '5px 8px', fontSize: 12, background: '#21262d', border: `1px solid ${BORDER}`, borderRadius: 6, color: '#e6edf3', outline: 'none', fontFamily: 'inherit', colorScheme: 'dark', flex: 1 }} />
           {(dateFrom || dateTo) && (
             <button onClick={() => { onDateFrom(''); onDateTo('') }} style={{ fontSize: 11, color: MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕ Clear</button>
           )}
         </>
       )}
 
-      {/* Sort buttons */}
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+      <div style={{ marginLeft: isMobile ? 0 : 'auto', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         <span style={{ color: MUTED, fontSize: 11, alignSelf: 'center' }}>Sort:</span>
         {sortBtn('date', 'Date')}
         {sortBtn('symbol', 'Symbol')}
@@ -140,23 +258,25 @@ function FilterBar({
 export function PositionsTable({ positions, connected, onClosePosition, onDeletePosition, onRollPosition, onReconcile }: Props) {
   const [tab, setTab] = useState<Tab>('active')
   const [syncing, setSyncing] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
-  // Closed positions state (fetched on demand)
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const [closedPositions, setClosedPositions] = useState<OptionPosition[]>([])
   const [closedLoading, setClosedLoading] = useState(false)
-
-  // Pending orders state (fetched on demand)
   const [pendingOrders, setPendingOrders] = useState<Order[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
 
-  // Filter / sort state
   const [symbolFilter, setSymbolFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [sortField, setSortField] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
-  // Fetch closed positions when tab selected
   useEffect(() => {
     if (tab !== 'closed') return
     setClosedLoading(true)
@@ -169,7 +289,6 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
     }).catch(() => {}).finally(() => setClosedLoading(false))
   }, [tab])
 
-  // Fetch orders when tab selected (refresh every time)
   useEffect(() => {
     if (tab !== 'pending') return
     setOrdersLoading(true)
@@ -192,32 +311,20 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
     else { setSortField(field); setSortDir('desc') }
   }
 
-  // ── Tab counts ───────────────────────────────────────────────────────────────
   const activeCount = positions.filter(p => p.status === 'OPEN').length
   const closingCount = positions.filter(p => p.status === 'CLOSING').length
   const pendingCount = pendingOrders.filter(o => ['PENDING', 'WORKING', 'AWAITING_PARENT_ORDER'].includes(o.status)).length
 
-  // ── Apply filters + sort to a positions array ─────────────────────────────
   const applyFilters = (list: OptionPosition[]): OptionPosition[] => {
     let out = [...list]
     if (symbolFilter) out = out.filter(p => p.underlying_symbol.toUpperCase().includes(symbolFilter.toUpperCase()))
-    if (dateFrom) out = out.filter(p => {
-      const d = p.closed_at ?? p.opened_at
-      return d >= dateFrom
-    })
-    if (dateTo) out = out.filter(p => {
-      const d = p.closed_at ?? p.opened_at
-      return d <= dateTo + 'T23:59:59'
-    })
+    if (dateFrom) out = out.filter(p => { const d = p.closed_at ?? p.opened_at; return d >= dateFrom })
+    if (dateTo) out = out.filter(p => { const d = p.closed_at ?? p.opened_at; return d <= dateTo + 'T23:59:59' })
     out.sort((a, b) => {
       let cmp = 0
-      if (sortField === 'date') {
-        cmp = new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime()
-      } else if (sortField === 'symbol') {
-        cmp = a.underlying_symbol.localeCompare(b.underlying_symbol)
-      } else if (sortField === 'pnl') {
-        cmp = (a.unrealized_pnl ?? 0) - (b.unrealized_pnl ?? 0)
-      }
+      if (sortField === 'date') cmp = new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime()
+      else if (sortField === 'symbol') cmp = a.underlying_symbol.localeCompare(b.underlying_symbol)
+      else if (sortField === 'pnl') cmp = (a.unrealized_pnl ?? 0) - (b.unrealized_pnl ?? 0)
       return sortDir === 'asc' ? cmp : -cmp
     })
     return out
@@ -233,20 +340,18 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
     return out
   }
 
-  // ── Derived row data ─────────────────────────────────────────────────────────
   const activeRows = applyFilters(positions.filter(p => p.status === 'OPEN'))
   const closingRows = applyFilters(positions.filter(p => p.status === 'CLOSING'))
   const closedRows = applyFilters(closedPositions)
   const orderRows = applyOrderFilters(pendingOrders)
 
-  // ── P&L helpers ──────────────────────────────────────────────────────────────
   const profitPct = (p: OptionPosition) => {
     if (p.unrealized_pnl == null || p.total_credit <= 0) return null
     return (p.unrealized_pnl / p.total_credit) * 100
   }
   const barColor = (pct: number | null) => pct == null || pct < 0 ? RED : pct >= 60 ? GREEN : YELLOW
 
-  // ── Shared position row renderer ─────────────────────────────────────────────
+  // ── Desktop table row ──────────────────────────────────────────────────────
   const renderPositionRow = (p: OptionPosition, showActions: boolean) => {
     const pct = profitPct(p)
     const barW = pct == null ? 0 : Math.min(100, Math.max(0, (pct / 75) * 100))
@@ -315,108 +420,143 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
     )
   }
 
-  // ── Position table wrapper ───────────────────────────────────────────────────
-  const renderPositionsTable = (rows: OptionPosition[], showActions: boolean, emptyMsg: string, loading = false) => (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={TH}>Symbol</th>
-            <th style={TH}>Strike / Exp</th>
-            <th style={{ ...TH, textAlign: 'right' }}>Contracts</th>
-            <th style={{ ...TH, textAlign: 'right' }}>Entry</th>
-            <th style={{ ...TH, textAlign: 'right' }}>Current</th>
-            <th style={{ ...TH, textAlign: 'right' }}>P&L $</th>
-            <th style={{ ...TH, textAlign: 'right' }}>P&L %</th>
-            <th style={TH}>Progress</th>
-            <th style={TH}>Date</th>
-            <th style={TH}>Status</th>
-            {showActions && <th style={TH}></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr><td colSpan={showActions ? 11 : 10} style={{ ...TD, textAlign: 'center', color: '#484f58', padding: '32px 16px' }}>Loading…</td></tr>
-          ) : rows.length === 0 ? (
-            <tr><td colSpan={showActions ? 11 : 10} style={{ ...TD, textAlign: 'center', color: '#484f58', padding: '32px 16px' }}>{emptyMsg}</td></tr>
-          ) : rows.map(p => renderPositionRow(p, showActions))}
-        </tbody>
-      </table>
-    </div>
-  )
+  // ── Position section (desktop = table, mobile = cards) ─────────────────────
+  const renderPositionsSection = (rows: OptionPosition[], showActions: boolean, emptyMsg: string, loading = false) => {
+    if (loading) return <div style={{ padding: '32px 16px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>Loading…</div>
+    if (rows.length === 0) return <div style={{ padding: '32px 16px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>{emptyMsg}</div>
 
-  // ── Pending orders table ─────────────────────────────────────────────────────
-  const renderOrdersTable = () => (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={TH}>Symbol</th>
-            <th style={{ ...TH, textAlign: 'right' }}>Qty</th>
-            <th style={TH}>Type</th>
-            <th style={{ ...TH, textAlign: 'right' }}>Limit Price</th>
-            <th style={{ ...TH, textAlign: 'right' }}>Fill Price</th>
-            <th style={TH}>Duration</th>
-            <th style={TH}>Placed</th>
-            <th style={TH}>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ordersLoading ? (
-            <tr><td colSpan={8} style={{ ...TD, textAlign: 'center', color: '#484f58', padding: '32px 16px' }}>Loading…</td></tr>
-          ) : orderRows.length === 0 ? (
-            <tr><td colSpan={8} style={{ ...TD, textAlign: 'center', color: '#484f58', padding: '32px 16px' }}>No orders found</td></tr>
-          ) : orderRows.map(o => (
-            <tr key={o.id}
-              onMouseEnter={e => (e.currentTarget.style.background = ROW_HOVER)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              style={{ transition: 'background 0.1s' }}
-            >
-              <td style={TD}><span style={{ fontWeight: 600, color: '#e6edf3' }}>{o.symbol}</span></td>
-              <td style={{ ...TD, textAlign: 'right', color: '#e6edf3' }}>{o.quantity}</td>
-              <td style={TD}><span style={{ color: MUTED, fontSize: 12 }}>{o.order_type}</span></td>
-              <td style={{ ...TD, textAlign: 'right', color: '#e6edf3' }}>{o.limit_price != null ? `$${fmt(o.limit_price)}` : '—'}</td>
-              <td style={{ ...TD, textAlign: 'right', color: o.fill_price != null ? GREEN : MUTED }}>
-                {o.fill_price != null ? `$${fmt(o.fill_price)}` : '—'}
-              </td>
-              <td style={TD}>
-                <span style={{ color: o.is_gtc ? '#79c0ff' : MUTED, fontSize: 12 }}>
-                  {o.is_gtc ? 'GTC' : 'DAY'}
-                </span>
-              </td>
-              <td style={{ ...TD, color: MUTED, fontSize: 12 }}>{relDate(o.created_at)}</td>
-              <td style={TD}><StatusBadge status={o.status} /></td>
-            </tr>
+    if (isMobile) {
+      return (
+        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {rows.map(p => (
+            <PositionCard
+              key={p.id}
+              p={p}
+              showActions={showActions}
+              onClose={() => onClosePosition(p.id)}
+              onDelete={() => onDeletePosition(p.id)}
+              onRoll={onRollPosition ? () => onRollPosition(p.id) : undefined}
+            />
           ))}
-        </tbody>
-      </table>
-    </div>
-  )
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={TH}>Symbol</th>
+              <th style={TH}>Strike / Exp</th>
+              <th style={{ ...TH, textAlign: 'right' }}>Contracts</th>
+              <th style={{ ...TH, textAlign: 'right' }}>Entry</th>
+              <th style={{ ...TH, textAlign: 'right' }}>Current</th>
+              <th style={{ ...TH, textAlign: 'right' }}>P&L $</th>
+              <th style={{ ...TH, textAlign: 'right' }}>P&L %</th>
+              <th style={TH}>Progress</th>
+              <th style={TH}>Date</th>
+              <th style={TH}>Status</th>
+              {showActions && <th style={TH}></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(p => renderPositionRow(p, showActions))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  // ── Orders section ─────────────────────────────────────────────────────────
+  const renderOrdersSection = () => {
+    if (ordersLoading) return <div style={{ padding: '32px 16px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>Loading…</div>
+    if (orderRows.length === 0) return <div style={{ padding: '32px 16px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>No orders found</div>
+
+    if (isMobile) {
+      return (
+        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {orderRows.map(o => <OrderCard key={o.id} o={o} />)}
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={TH}>Symbol</th>
+              <th style={{ ...TH, textAlign: 'right' }}>Qty</th>
+              <th style={TH}>Type</th>
+              <th style={{ ...TH, textAlign: 'right' }}>Limit Price</th>
+              <th style={{ ...TH, textAlign: 'right' }}>Fill Price</th>
+              <th style={TH}>Duration</th>
+              <th style={TH}>Placed</th>
+              <th style={TH}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orderRows.map(o => (
+              <tr key={o.id}
+                onMouseEnter={e => (e.currentTarget.style.background = ROW_HOVER)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                style={{ transition: 'background 0.1s' }}
+              >
+                <td style={TD}><span style={{ fontWeight: 600, color: '#e6edf3' }}>{o.symbol}</span></td>
+                <td style={{ ...TD, textAlign: 'right', color: '#e6edf3' }}>{o.quantity}</td>
+                <td style={TD}><span style={{ color: MUTED, fontSize: 12 }}>{o.order_type}</span></td>
+                <td style={{ ...TD, textAlign: 'right', color: '#e6edf3' }}>{o.limit_price != null ? `$${fmt(o.limit_price)}` : '—'}</td>
+                <td style={{ ...TD, textAlign: 'right', color: o.fill_price != null ? GREEN : MUTED }}>
+                  {o.fill_price != null ? `$${fmt(o.fill_price)}` : '—'}
+                </td>
+                <td style={TD}>
+                  <span style={{ color: o.is_gtc ? '#79c0ff' : MUTED, fontSize: 12 }}>
+                    {o.is_gtc ? 'GTC' : 'DAY'}
+                  </span>
+                </td>
+                <td style={{ ...TD, color: MUTED, fontSize: 12 }}>{relDate(o.created_at)}</td>
+                <td style={TD}><StatusBadge status={o.status} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
   return (
     <div style={CARD}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${BORDER}`, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ color: '#e6edf3', fontWeight: 600, fontSize: 15, margin: 0 }}>Positions</h2>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: connected ? GREEN : RED, display: 'inline-block', animation: connected ? 'pulse 2s infinite' : 'none' }} />
-          <span style={{ color: MUTED, fontSize: 12 }}>{connected ? 'Live' : 'Reconnecting…'}</span>
+      <div style={{
+        padding: isMobile ? '12px 14px' : '14px 20px',
+        borderBottom: `1px solid ${BORDER}`,
+        display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 style={{ color: '#e6edf3', fontWeight: 600, fontSize: 15, margin: 0 }}>Positions</h2>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: connected ? GREEN : RED, display: 'inline-block', animation: connected ? 'pulse 2s infinite' : 'none' }} />
+            <span style={{ color: MUTED, fontSize: 12 }}>{connected ? 'Live' : 'Reconnecting…'}</span>
+          </div>
+          <button
+            onClick={handleReconcile} disabled={syncing}
+            style={{ padding: '5px 10px', fontSize: 12, fontWeight: 500, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, color: syncing ? '#484f58' : BLUE, cursor: syncing ? 'default' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+            title="Sync positions with Schwab account"
+          >
+            {syncing ? '↻ Syncing…' : isMobile ? '↻ Sync' : '↻ Sync Schwab'}
+          </button>
         </div>
 
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Tabs — scrollable on mobile */}
+        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
           <TabBtn active={tab === 'active'} onClick={() => setTab('active')}>Active ({activeCount})</TabBtn>
           <TabBtn active={tab === 'closing'} onClick={() => setTab('closing')}>Closing ({closingCount})</TabBtn>
           <TabBtn active={tab === 'pending'} onClick={() => setTab('pending')}>
-            Orders {pendingCount > 0 ? `(${pendingCount} pending)` : ''}
+            Orders{pendingCount > 0 ? ` (${pendingCount})` : ''}
           </TabBtn>
-          <TabBtn active={tab === 'closed'} onClick={() => setTab('closed')}>Closed / History</TabBtn>
-          <button
-            onClick={handleReconcile} disabled={syncing}
-            style={{ marginLeft: 4, padding: '5px 12px', fontSize: 12, fontWeight: 500, background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, color: syncing ? '#484f58' : BLUE, cursor: syncing ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
-            title="Sync positions with Schwab account"
-          >
-            {syncing ? '↻ Syncing…' : '↻ Sync Schwab'}
-          </button>
+          <TabBtn active={tab === 'closed'} onClick={() => setTab('closed')}>History</TabBtn>
         </div>
       </div>
 
@@ -425,14 +565,14 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
         symbolFilter={symbolFilter} onSymbolChange={setSymbolFilter}
         dateFrom={dateFrom} dateTo={dateTo} onDateFrom={setDateFrom} onDateTo={setDateTo}
         sortField={sortField} sortDir={sortDir} onSort={handleSort}
-        showDateFilter={tab === 'closed'}
+        showDateFilter={tab === 'closed'} isMobile={isMobile}
       />
 
       {/* ── Content ── */}
-      {tab === 'active'   && renderPositionsTable(activeRows,  true,  'No active positions', false)}
-      {tab === 'closing'  && renderPositionsTable(closingRows, true,  'No closing positions', false)}
-      {tab === 'pending'  && renderOrdersTable()}
-      {tab === 'closed'   && renderPositionsTable(closedRows,  false, 'No closed positions', closedLoading)}
+      {tab === 'active'  && renderPositionsSection(activeRows,  true,  'No active positions')}
+      {tab === 'closing' && renderPositionsSection(closingRows, true,  'No closing positions')}
+      {tab === 'pending' && renderOrdersSection()}
+      {tab === 'closed'  && renderPositionsSection(closedRows,  false, 'No closed positions', closedLoading)}
     </div>
   )
 }
