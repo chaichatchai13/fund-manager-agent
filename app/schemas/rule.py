@@ -103,5 +103,7 @@ class SellPutRuleResponse(BaseModel):
     itm_action: str
     roll_when_dte: int
     roll_target_weeks: int
+    last_error: str | None
+    last_error_at: datetime | None
     created_at: datetime
     updated_at: datetime

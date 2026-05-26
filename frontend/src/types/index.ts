@@ -42,6 +42,8 @@ export interface SellPutRule {
   itm_action: 'let_assign' | 'roll'
   roll_when_dte: number
   roll_target_weeks: number
+  last_error: string | null
+  last_error_at: string | null
 }
 
 export interface DailySnapshot {

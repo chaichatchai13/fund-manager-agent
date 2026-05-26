@@ -59,5 +59,9 @@ class SellPutRule(Base):
     roll_when_dte: Mapped[int] = mapped_column(Integer, default=7)             # trigger roll when DTE ≤ this
     roll_target_weeks: Mapped[int] = mapped_column(Integer, default=4)         # roll to expiry ~N weeks out
 
+    # Last order placement error (populated when all retry attempts fail)
+    last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

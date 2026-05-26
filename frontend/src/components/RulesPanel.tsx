@@ -190,6 +190,31 @@ function RuleRow({
               ))}
           </div>
 
+          {/* Order error banner — shown when last placement attempt failed */}
+          {rule.last_error && (
+            <div style={{
+              marginTop: 8,
+              padding: '6px 10px',
+              background: '#2d1b1b',
+              border: '1px solid #6e3030',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 6,
+            }}>
+              <span style={{ color: '#f85149', fontSize: 13, flexShrink: 0 }}>⚠️</span>
+              <div>
+                <span style={{ color: '#f85149', fontSize: 11, fontWeight: 600 }}>Order failed: </span>
+                <span style={{ color: '#ffa198', fontSize: 11 }}>{rule.last_error}</span>
+                {rule.last_error_at && (
+                  <span style={{ color: '#484f58', fontSize: 10, marginLeft: 8 }}>
+                    {new Date(rule.last_error_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Stats row */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 6 }}>
             <StatChip label="DTE" value={`${rule.min_dte}–${rule.max_dte}`} />
