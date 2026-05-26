@@ -59,6 +59,8 @@ const inputBase: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
+const PAGE_SIZE = 5
+
 // ── SocialIntelTab ────────────────────────────────────────────────────────────
 export function SocialIntelTab() {
   const [watchlist, setWatchlist] = useState<WatchlistEntry[]>([])
@@ -70,6 +72,7 @@ export function SocialIntelTab() {
   const [resummarizing, setResummarizing] = useState(false)
   const [resummarizingError, setResummarizingError] = useState<string | null>(null)
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('social_lang') ?? 'English')
+  const [page, setPage] = useState(1)
 
   // Seed language from server default on first visit (no localStorage key yet)
   useEffect(() => {
@@ -131,6 +134,13 @@ export function SocialIntelTab() {
   const visiblePosts = filterHandle === 'all'
     ? posts
     : posts.filter((p) => p.x_handle === filterHandle)
+
+  // Reset to page 1 whenever the visible set changes (filter or refresh)
+  const visibleKey = visiblePosts.map(p => p.id).join(',')
+  useEffect(() => { setPage(1) }, [visibleKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalPages = Math.max(1, Math.ceil(visiblePosts.length / PAGE_SIZE))
+  const pagedPosts = visiblePosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   // Posts whose summary_language doesn't match the selected language
   const staleCount = visiblePosts.filter(p => p.summary_language !== language).length
@@ -351,10 +361,45 @@ export function SocialIntelTab() {
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {visiblePosts.map((post) => (
+          {pagedPosts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
         </div>
+
+        {/* Pagination controls */}
+        {totalPages > 1 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 8, marginTop: 12, marginBottom: 4,
+          }}>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              style={{
+                padding: '5px 12px', fontSize: 12, fontWeight: 600,
+                background: page === 1 ? '#21262d' : CARD_BG,
+                color: page === 1 ? '#484f58' : '#e6edf3',
+                border: `1px solid ${BORDER}`, borderRadius: 7,
+                cursor: page === 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}
+            >← Prev</button>
+            <span style={{ fontSize: 12, color: MUTED }}>
+              Page {page} of {totalPages}
+              <span style={{ color: '#484f58', marginLeft: 6 }}>({visiblePosts.length} posts)</span>
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              style={{
+                padding: '5px 12px', fontSize: 12, fontWeight: 600,
+                background: page === totalPages ? '#21262d' : CARD_BG,
+                color: page === totalPages ? '#484f58' : '#e6edf3',
+                border: `1px solid ${BORDER}`, borderRadius: 7,
+                cursor: page === totalPages ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}
+            >Next →</button>
+          </div>
+        )}
       </div>
 
       {/* ── Right panel: Inline Agent Chat (desktop) ─────────────────────── */}
@@ -365,12 +410,12 @@ export function SocialIntelTab() {
           top: 16,
           height: 'calc(100vh - 120px)',
         }}>
-          <InlineChat posts={visiblePosts} />
+          <InlineChat posts={visiblePosts} language={language} />
         </div>
       )}
 
       {/* Mobile: chat below the feed as a collapsible card */}
-      {isMobile && <MobileChatSheet posts={visiblePosts} />}
+      {isMobile && <MobileChatSheet posts={visiblePosts} language={language} />}
     </div>
   )
 }
@@ -384,15 +429,16 @@ const SOCIAL_QUICK_PROMPTS = [
   'Scan for opportunities',
 ]
 
-function buildFeedContext(posts: SocialPost[]): object[] {
+function buildFeedContext(posts: SocialPost[], language: string): object[] {
   if (posts.length === 0) return []
   const lines = posts.map((p, i) =>
     `${i + 1}. $${p.stock} — @${p.x_handle} (${relativeTime(p.posted_at)})\n   ${p.summary || p.content.slice(0, 300)}`
   ).join('\n\n')
+  const langNote = language !== 'English' ? ` Always reply in ${language}.` : ''
   return [
     {
       role: 'user',
-      content: `Here is the current Social Intel feed I'm looking at (${posts.length} post${posts.length !== 1 ? 's' : ''}):\n\n${lines}\n\nI'll ask you questions about these posts and the stocks mentioned.`,
+      content: `Here is the current Social Intel feed I'm looking at (${posts.length} post${posts.length !== 1 ? 's' : ''}):\n\n${lines}\n\nI'll ask you questions about these posts and the stocks mentioned.${langNote}`,
     },
     {
       role: 'assistant',
@@ -401,36 +447,33 @@ function buildFeedContext(posts: SocialPost[]): object[] {
   ]
 }
 
-function InlineChat({ posts }: { posts: SocialPost[] }) {
-  const contextRef = useRef<SocialPost[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: posts.length > 0
-        ? `I've read all ${posts.length} post${posts.length !== 1 ? 's' : ''} in your feed. Ask me anything about them.`
-        : "I'm watching the feed with you. Once posts load, I'll have full context of every summary. Ask me anything about the stocks in your watchlist.",
-    },
-  ])
+function InlineChat({ posts, language }: { posts: SocialPost[], language: string }) {
+  const contextRef = useRef<{ posts: SocialPost[], language: string }>({ posts: [], language: '' })
+  const introMessage = (n: number): ChatMessage => ({
+    role: 'assistant',
+    content: n > 0
+      ? `I've read all ${n} post${n !== 1 ? 's' : ''} in your feed. Ask me anything about them.`
+      : "I'm watching the feed with you. Once posts load, I'll have full context of every summary. Ask me anything about the stocks in your watchlist.",
+  })
+  const [messages, setMessages] = useState<ChatMessage[]>([introMessage(posts.length)])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [apiMessages, setApiMessages] = useState<object[]>(() => buildFeedContext(posts))
+  const [apiMessages, setApiMessages] = useState<object[]>(() => buildFeedContext(posts, language))
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Re-inject context when posts change (e.g. after Refresh)
+  // Re-inject context when posts or language changes
   useEffect(() => {
     const prev = contextRef.current
-    const changed = posts.length !== prev.length || posts.some((p, i) => p.id !== prev[i]?.id)
-    if (!changed) return
-    contextRef.current = posts
-    setApiMessages(buildFeedContext(posts))
-    if (posts.length > 0) {
-      setMessages([{
-        role: 'assistant',
-        content: `I've read all ${posts.length} post${posts.length !== 1 ? 's' : ''} in your feed. Ask me anything about them.`,
-      }])
+    const postsChanged = posts.length !== prev.posts.length || posts.some((p, i) => p.id !== prev.posts[i]?.id)
+    const langChanged = language !== prev.language
+    if (!postsChanged && !langChanged) return
+    contextRef.current = { posts, language }
+    setApiMessages(buildFeedContext(posts, language))
+    if (postsChanged && posts.length > 0) {
+      setMessages([introMessage(posts.length)])
     }
-  }, [posts])
+  }, [posts, language])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -618,7 +661,7 @@ function InlineChat({ posts }: { posts: SocialPost[] }) {
 }
 
 // ── Mobile: floating chat button + slide-up sheet ─────────────────────────────
-function MobileChatSheet({ posts }: { posts: SocialPost[] }) {
+function MobileChatSheet({ posts, language }: { posts: SocialPost[], language: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -644,7 +687,7 @@ function MobileChatSheet({ posts }: { posts: SocialPost[] }) {
           height: 420, border: `1px solid #58a6ff`,
           borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden',
         }}>
-          <InlineChat posts={posts} />
+          <InlineChat posts={posts} language={language} />
         </div>
       )}
     </div>
