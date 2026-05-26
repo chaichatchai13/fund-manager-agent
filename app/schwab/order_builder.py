@@ -17,7 +17,7 @@ def build_sell_to_open_limit(option_symbol: str, quantity: int, limit_price: flo
     import schwab.orders.common as common
 
     order = (
-        opt.option_sell_to_open_limit(option_symbol, quantity, limit_price)
+        opt.option_sell_to_open_limit(option_symbol, quantity, f"{float(limit_price):.2f}")
         .set_duration(common.Duration.DAY)
         .set_session(common.Session.NORMAL)
         .build()
@@ -38,7 +38,7 @@ def build_buy_to_close_limit(
 
     duration = common.Duration.GOOD_TILL_CANCEL if gtc else common.Duration.DAY
     order = (
-        opt.option_buy_to_close_limit(option_symbol, quantity, limit_price)
+        opt.option_buy_to_close_limit(option_symbol, quantity, f"{float(limit_price):.2f}")
         .set_duration(duration)
         .set_session(common.Session.NORMAL)
         .build()

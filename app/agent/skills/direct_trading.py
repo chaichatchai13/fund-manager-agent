@@ -242,7 +242,7 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
                     return {"error": "limit_price is required for LIMIT orders"}
                 order = (
                     schwab_lib.orders.equities.equity_buy_limit(
-                        tool_input["symbol"], tool_input["quantity"], tool_input["limit_price"]
+                        tool_input["symbol"], tool_input["quantity"], f"{float(tool_input['limit_price']):.2f}"
                     )
                     .set_duration(duration)
                     .set_session(common.Session.NORMAL)
@@ -271,7 +271,7 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
                     return {"error": "limit_price is required for LIMIT orders"}
                 order = (
                     schwab_lib.orders.equities.equity_sell_limit(
-                        tool_input["symbol"], tool_input["quantity"], tool_input["limit_price"]
+                        tool_input["symbol"], tool_input["quantity"], f"{float(tool_input['limit_price']):.2f}"
                     )
                     .set_duration(duration)
                     .set_session(common.Session.NORMAL)
@@ -306,7 +306,7 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
 
             if order_type == "LIMIT":
                 order = (
-                    opt.option_buy_to_open_limit(raw_symbol, contracts, limit_price)
+                    opt.option_buy_to_open_limit(raw_symbol, contracts, f"{float(limit_price):.2f}")
                     .set_duration(duration)
                     .set_session(common.Session.NORMAL)
                     .build()
@@ -341,7 +341,7 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
 
             if order_type == "LIMIT":
                 order = (
-                    opt.option_sell_to_open_limit(raw_symbol, contracts, limit_price)
+                    opt.option_sell_to_open_limit(raw_symbol, contracts, f"{float(limit_price):.2f}")
                     .set_duration(duration)
                     .set_session(common.Session.NORMAL)
                     .build()
