@@ -12,6 +12,12 @@ class WatchlistAdd(BaseModel):
 
 class RefreshRequest(BaseModel):
     stocks: list[str] | None = None
+    language: str = "English"
+
+
+class ResummaryRequest(BaseModel):
+    post_ids: list[str] | None = None   # None = all cached posts
+    language: str = "English"
 
 
 @router.get("/watchlist")
@@ -44,4 +50,12 @@ async def refresh_feed(body: RefreshRequest | None = None):
     """Fetch new posts since last check and return summary."""
     from app.services.social_service import social_service
     stocks = body.stocks if body else None
-    return await social_service.get_summary(stocks=stocks, since_last_check=True)
+    language = body.language if body else "English"
+    return await social_service.get_summary(stocks=stocks, since_last_check=True, language=language)
+
+
+@router.post("/resummary")
+async def resummary(body: ResummaryRequest):
+    """Re-summarize existing cached posts in a different language."""
+    from app.services.social_service import social_service
+    return await social_service.resummary_posts(post_ids=body.post_ids, language=body.language)

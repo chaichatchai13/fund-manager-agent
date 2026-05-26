@@ -160,7 +160,7 @@ class SocialService:
 
     # ── Summary with AI ──────────────────────────────────────────────────────
 
-    async def get_summary(self, stocks: list[str] = None, since_last_check: bool = True) -> dict:
+    async def get_summary(self, stocks: list[str] = None, since_last_check: bool = True, language: str = "English") -> dict:
         """
         Fetch and summarize posts for all watched accounts × stocks.
         Returns structured data suitable for the article-style UI.
@@ -187,7 +187,7 @@ class SocialService:
             return {"posts": [], "message": "No new posts since last check."}
 
         # Generate AI summaries
-        summarized = await self._summarize_posts(all_posts)
+        summarized = await self._summarize_posts(all_posts, language=language)
 
         # Save to DB + update last_checked
         await self._save_posts(summarized)
@@ -195,26 +195,65 @@ class SocialService:
 
         return {"posts": summarized, "count": len(summarized)}
 
-    async def _summarize_posts(self, posts: list[dict]) -> list[dict]:
+    async def resummary_posts(self, post_ids: list[str] | None = None, language: str = "English") -> dict:
+        """Re-summarize existing cached posts in a given language and update the DB."""
+        from sqlalchemy import desc
+        async with AsyncSessionLocal() as db:
+            q = select(SocialPost).order_by(desc(SocialPost.posted_at)).limit(100)
+            if post_ids:
+                q = q.where(SocialPost.post_id.in_(post_ids))
+            result = await db.execute(q)
+            rows = result.scalars().all()
+
+        if not rows:
+            return {"updated": 0}
+
+        post_dicts = [
+            {
+                "post_id": r.post_id,
+                "x_handle": r.x_handle,
+                "stock": r.stock,
+                "content": r.content,
+                "referenced_content": r.referenced_content,
+            }
+            for r in rows
+        ]
+
+        summarized = await self._summarize_posts(post_dicts, language=language)
+        summary_map = {p["post_id"]: p["summary"] for p in summarized}
+
+        async with AsyncSessionLocal() as db:
+            for row_id, post_id in [(r.id, r.post_id) for r in rows]:
+                result = await db.execute(select(SocialPost).where(SocialPost.id == row_id))
+                row = result.scalar_one_or_none()
+                if row and post_id in summary_map:
+                    row.summary = summary_map[post_id]
+            await db.commit()
+
+        return {"updated": len(summarized), "language": language}
+
+    async def _summarize_posts(self, posts: list[dict], language: str = "English") -> list[dict]:
         """Generate a one-paragraph summary for each post using Claude."""
         import anthropic
         from app.config import settings
         client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+        lang_instruction = "" if language == "English" else f" Write the summary in {language}."
 
         result = []
         for post in posts:
             try:
                 prompt = (
                     f"Summarize this X post about ${post['stock']} from @{post['x_handle']} "
-                    f"in 1-2 sentences for a trader. Focus on actionable insight.\n\n"
+                    f"in 1-2 sentences for a trader. Focus on actionable insight.{lang_instruction}\n\n"
                     f"Post: {post['content']}\n"
                 )
                 if post.get("referenced_content"):
                     prompt += f"Referenced post: {post['referenced_content']}\n"
 
                 resp = await client.messages.create(
-                    model="claude-haiku-4-5",  # Use fast/cheap model for summaries
-                    max_tokens=200,
+                    model="claude-haiku-4-5",
+                    max_tokens=300,
                     messages=[{"role": "user", "content": prompt}],
                 )
                 summary = resp.content[0].text if resp.content else post["content"][:200]

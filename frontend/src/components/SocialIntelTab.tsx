@@ -66,7 +66,11 @@ export function SocialIntelTab() {
   const [filterStock, setFilterStock] = useState<string>('all')
   const [loadingFeed, setLoadingFeed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [resummarizing, setResummarizing] = useState(false)
+  const [language, setLanguage] = useState<string>(() => localStorage.getItem('social_lang') ?? 'English')
   const [showWatchlist, setShowWatchlist] = useState(true)
+
+  const LANGUAGES = ['English', 'Thai', 'Japanese', 'Chinese', 'Spanish', 'French', 'German', 'Korean']
   const isMobile = window.innerWidth < 900
 
   const allStocks = Array.from(new Set(watchlist.flatMap((w) => w.stocks))).sort()
@@ -100,7 +104,7 @@ export function SocialIntelTab() {
       await fetch('/api/social/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stocks }),
+        body: JSON.stringify({ stocks, language }),
       })
       await fetchFeed()
     } catch { /* ignore */ }
@@ -110,6 +114,24 @@ export function SocialIntelTab() {
   const visiblePosts = filterHandle === 'all'
     ? posts
     : posts.filter((p) => p.x_handle === filterHandle)
+
+  const changeLanguage = async (lang: string) => {
+    setLanguage(lang)
+    localStorage.setItem('social_lang', lang)
+    if (lang === language) return
+    // Re-summarize visible posts in the new language
+    setResummarizing(true)
+    try {
+      const ids = visiblePosts.map((p) => p.post_id)
+      await fetch('/api/social/resummary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_ids: ids.length ? ids : null, language: lang }),
+      })
+      await fetchFeed()
+    } catch { /* ignore */ }
+    setResummarizing(false)
+  }
 
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: 0 }}>
@@ -209,9 +231,34 @@ export function SocialIntelTab() {
 
           <div style={{ flex: 1 }} />
 
+          {/* Language selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap' }}>🌐</span>
+            <select
+              value={language}
+              onChange={(e) => changeLanguage(e.target.value)}
+              disabled={resummarizing}
+              style={{
+                ...inputBase,
+                width: 'auto', minWidth: 90, cursor: resummarizing ? 'wait' : 'pointer',
+                padding: '5px 8px', fontSize: 12,
+                opacity: resummarizing ? 0.6 : 1,
+              }}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+            {resummarizing && (
+              <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap', animation: 'pulse 1s infinite' }}>
+                Translating…
+              </span>
+            )}
+          </div>
+
           <button
             onClick={refresh}
-            disabled={refreshing}
+            disabled={refreshing || resummarizing}
             style={{
               background: refreshing ? '#21262d' : BLUE_BTN,
               color: refreshing ? MUTED : '#fff',
