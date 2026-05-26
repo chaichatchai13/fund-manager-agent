@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 const CARD_BG = '#161b22'
 const BORDER = '#30363d'
@@ -115,6 +115,9 @@ export function SettingsPanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* AI Model Card */}
+      <AIModelCard />
 
       {/* Schwab Connection Card */}
       <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
@@ -271,6 +274,131 @@ function StatusRow({ label, value, valueColor }: { label: string; value: string;
     <div style={{ background: '#0d1117', borderRadius: 8, padding: '10px 14px' }}>
       <div style={{ color: MUTED, fontSize: 11, marginBottom: 2 }}>{label}</div>
       <div style={{ color: valueColor ?? '#e6edf3', fontSize: 13, fontWeight: 500 }}>{value}</div>
+    </div>
+  )
+}
+
+// ── AI Model Card ─────────────────────────────────────────────────────────────
+
+interface AIProvider {
+  id: string
+  label: string
+  configured: boolean
+}
+
+const PROVIDER_ICONS: Record<string, string> = {
+  claude: '🟠',
+  gpt:    '🟢',
+  gemini: '🔵',
+  grok:   '⚫',
+}
+
+function AIModelCard() {
+  const [active, setActive] = useState<string | null>(null)
+  const [providers, setProviders] = useState<AIProvider[]>([])
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+
+  const fetchModel = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ai/model')
+      if (res.ok) {
+        const data = await res.json()
+        setActive(data.active)
+        setProviders(data.providers)
+      }
+    } catch { /* ignore */ }
+  }, [])
+
+  useEffect(() => { fetchModel() }, [fetchModel])
+
+  const select = async (id: string) => {
+    if (id === active) return
+    setSaving(true); setMsg(null)
+    try {
+      const res = await fetch('/api/ai/model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: id }),
+      })
+      if (res.ok) {
+        setActive(id)
+        const p = providers.find(p => p.id === id)
+        setMsg({ text: `Switched to ${p?.label ?? id}`, ok: true })
+      } else {
+        setMsg({ text: 'Failed to switch model', ok: false })
+      }
+    } catch { setMsg({ text: 'Network error', ok: false }) }
+    setSaving(false)
+  }
+
+  return (
+    <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '20px 24px' }}>
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: '0 0 4px', color: '#e6edf3', fontSize: 16, fontWeight: 600 }}>🤖 AI Model</h2>
+        <p style={{ margin: 0, color: MUTED, fontSize: 13 }}>
+          Used for Social Intel post summaries. Agent Chat always uses Claude (required for tool use).
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
+        {providers.map((p) => {
+          const isActive = p.id === active
+          const disabled = !p.configured || saving
+          return (
+            <button
+              key={p.id}
+              onClick={() => !disabled && select(p.id)}
+              disabled={disabled}
+              title={!p.configured ? 'API key not configured — add to .env' : undefined}
+              style={{
+                padding: '12px 16px',
+                borderRadius: 10,
+                border: isActive
+                  ? `2px solid ${GREEN}`
+                  : `1px solid ${disabled ? '#21262d' : BORDER}`,
+                background: isActive ? '#0d2a1a' : disabled ? '#0d1117' : '#21262d',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                textAlign: 'left',
+                opacity: disabled && !isActive ? 0.45 : 1,
+                transition: 'all 0.15s',
+                fontFamily: 'inherit',
+              }}
+              onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.borderColor = '#58a6ff' }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = isActive ? GREEN : disabled ? '#21262d' : BORDER }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 16 }}>{PROVIDER_ICONS[p.id]}</span>
+                {isActive && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: GREEN, background: '#1a3028', padding: '1px 6px', borderRadius: 4 }}>
+                    ACTIVE
+                  </span>
+                )}
+                {!p.configured && (
+                  <span style={{ fontSize: 10, color: '#484f58', background: '#21262d', padding: '1px 6px', borderRadius: 4 }}>
+                    NO KEY
+                  </span>
+                )}
+              </div>
+              <div style={{ color: isActive ? '#e6edf3' : MUTED, fontSize: 13, fontWeight: 600 }}>{p.label}</div>
+              {!p.configured && (
+                <div style={{ color: '#484f58', fontSize: 11, marginTop: 2 }}>Add key to .env</div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {msg && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 8, fontSize: 13,
+          background: msg.ok ? '#0d2a1a' : '#2a0d0d',
+          border: `1px solid ${msg.ok ? GREEN : RED}`,
+          color: msg.ok ? GREEN : RED,
+        }}>
+          {msg.text}
+        </div>
+      )}
     </div>
   )
 }

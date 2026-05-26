@@ -28,6 +28,7 @@ passlib = {version = ">=1.7", extras = ["bcrypt"]}
 twilio = "^9.10.9"
 pywebpush = "^2.3.0"
 python-multipart = "^0.0.29"
+openai = "^2.38.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2"

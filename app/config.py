@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     socialdata_api_key: str = ""
     social_summary_language: str = "English"
 
+    # AI providers (for social summaries — agent chat always uses Claude)
+    default_ai_model: str = "claude"   # claude | gpt | gemini | grok
+    openai_api_key: str = ""
+    gemini_api_key: str = ""
+    xai_api_key: str = ""              # xAI / Grok
+
     # PWA Push (VAPID keys — generate with: npx web-push generate-vapid-keys)
     vapid_public_key: str = ""
     vapid_private_key: str = ""

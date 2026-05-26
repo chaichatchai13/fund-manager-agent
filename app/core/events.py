@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.core.logging import configure_logging
 from app.database import AsyncSessionLocal, create_tables
 from app.models.scheduler import DEFAULT_JOBS, SchedulerConfig
+from app.models.app_settings import AppSettings  # noqa: F401 — ensures table is registered
 
 logger = structlog.get_logger(__name__)
 

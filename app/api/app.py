@@ -47,9 +47,11 @@ def create_app() -> FastAPI:
         agent, auth, rules, positions, orders, performance,
         websocket, account, schwab, alerts, social_intel, webhooks, push, legal,
     )
+    from app.api.routes import ai_settings
     app.include_router(legal.router)   # /privacy and /terms — public, no auth
     app.include_router(auth.router)
     app.include_router(agent.router)
+    app.include_router(ai_settings.router)
     app.include_router(rules.router)
     app.include_router(positions.router)
     app.include_router(orders.router)

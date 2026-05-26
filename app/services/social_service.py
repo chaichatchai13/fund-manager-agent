@@ -255,10 +255,8 @@ class SocialService:
         return {"updated": len(summarized), "language": language}
 
     async def _summarize_posts(self, posts: list[dict], language: str = "English") -> list[dict]:
-        """Generate a one-paragraph summary for each post using Claude."""
-        import anthropic
-        from app.config import settings
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        """Generate a one-paragraph summary for each post using the active AI provider."""
+        from app.services.ai_provider import generate_text
 
         lang_instruction = "" if language == "English" else f" Write the summary in {language}."
 
@@ -273,12 +271,7 @@ class SocialService:
                 if post.get("referenced_content"):
                     prompt += f"Referenced post: {post['referenced_content']}\n"
 
-                resp = await client.messages.create(
-                    model="claude-haiku-4-5",
-                    max_tokens=300,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                summary = resp.content[0].text if resp.content else post["content"][:200]
+                summary = await generate_text(prompt)
             except Exception:
                 summary = post["content"][:300]
 
