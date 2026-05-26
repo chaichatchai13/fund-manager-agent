@@ -124,18 +124,19 @@ export function SocialIntelTab() {
     ? posts
     : posts.filter((p) => p.x_handle === filterHandle)
 
-  const changeLanguage = async (lang: string) => {
+  const changeLanguage = (lang: string) => {
     setLanguage(lang)
     localStorage.setItem('social_lang', lang)
-    if (lang === language) return
-    // Re-summarize visible posts in the new language
+  }
+
+  const applyLanguage = async () => {
     setResummarizing(true)
     try {
       const ids = visiblePosts.map((p) => p.post_id)
       await fetch('/api/social/resummary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_ids: ids.length ? ids : null, language: lang }),
+        body: JSON.stringify({ post_ids: ids.length ? ids : null, language }),
       })
       await fetchFeed()
     } catch { /* ignore */ }
@@ -240,9 +241,9 @@ export function SocialIntelTab() {
 
           <div style={{ flex: 1 }} />
 
-          {/* Language selector */}
+          {/* Language selector + Apply */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap' }}>🌐</span>
+            <span style={{ fontSize: 13, color: MUTED }}>🌐</span>
             <select
               value={language}
               onChange={(e) => changeLanguage(e.target.value)}
@@ -258,11 +259,22 @@ export function SocialIntelTab() {
                 <option key={l} value={l}>{l}</option>
               ))}
             </select>
-            {resummarizing && (
-              <span style={{ fontSize: 11, color: MUTED, whiteSpace: 'nowrap', animation: 'pulse 1s infinite' }}>
-                Translating…
-              </span>
-            )}
+            <button
+              onClick={applyLanguage}
+              disabled={resummarizing || visiblePosts.length === 0}
+              title={`Re-summarize all visible posts in ${language}`}
+              style={{
+                padding: '5px 10px', fontSize: 12, fontWeight: 600,
+                background: resummarizing ? '#21262d' : '#1a3028',
+                color: resummarizing ? MUTED : GREEN,
+                border: `1px solid ${resummarizing ? BORDER : '#3fb95044'}`,
+                borderRadius: 7, cursor: resummarizing ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit', whiteSpace: 'nowrap',
+                opacity: visiblePosts.length === 0 ? 0.4 : 1,
+              }}
+            >
+              {resummarizing ? 'Translating…' : 'Apply'}
+            </button>
           </div>
 
           <button
