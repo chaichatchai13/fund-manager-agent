@@ -44,7 +44,7 @@ class SocialService:
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(SocialWatchlist))
             rows = result.scalars().all()
-        return [{"id": r.id, "x_handle": r.x_handle, "display_name": r.display_name, "stocks": r.stocks} for r in rows]
+            return [{"id": r.id, "x_handle": r.x_handle, "display_name": r.display_name, "stocks": r.stocks} for r in rows]
 
     async def add_to_watchlist(self, x_handle: str, stocks: list[str]) -> dict:
         handle = x_handle.lstrip("@").lower()
@@ -201,44 +201,54 @@ class SocialService:
     async def resummary_posts(self, post_ids: list[str] | None = None, language: str | None = None) -> dict:
         """Re-summarize existing cached posts in a given language and update the DB."""
         from app.config import settings
+        from sqlalchemy import desc, or_
         language = language or settings.social_summary_language or "English"
-        from sqlalchemy import desc
+
+        # Fetch only posts that need updating — filter in SQL, extract data while session open
         async with AsyncSessionLocal() as db:
-            q = select(SocialPost).order_by(desc(SocialPost.posted_at)).limit(100)
+            q = (
+                select(SocialPost)
+                .order_by(desc(SocialPost.posted_at))
+                .limit(100)
+                .where(
+                    or_(
+                        SocialPost.summary_language != language,
+                        SocialPost.summary_language == None,  # noqa: E711
+                    )
+                )
+            )
             if post_ids:
                 q = q.where(SocialPost.post_id.in_(post_ids))
             result = await db.execute(q)
             rows = result.scalars().all()
+            # Extract all needed data while session is still open
+            post_dicts = [
+                {
+                    "db_id": r.id,
+                    "post_id": r.post_id,
+                    "x_handle": r.x_handle,
+                    "stock": r.stock,
+                    "content": r.content,
+                    "referenced_content": r.referenced_content,
+                }
+                for r in rows
+            ]
 
-        if not rows:
-            return {"updated": 0}
-
-        # Skip posts already summarized in the requested language
-        needs_update = [r for r in rows if r.summary_language != language]
-        if not needs_update:
-            return {"updated": 0, "skipped": len(rows), "language": language, "message": "All posts already in this language"}
-
-        post_dicts = [
-            {
-                "post_id": r.post_id,
-                "x_handle": r.x_handle,
-                "stock": r.stock,
-                "content": r.content,
-                "referenced_content": r.referenced_content,
-            }
-            for r in needs_update
-        ]
-        rows = needs_update
+        if not post_dicts:
+            return {"updated": 0, "language": language, "message": "All posts already in this language"}
 
         summarized = await self._summarize_posts(post_dicts, language=language)
         summary_map = {p["post_id"]: p["summary"] for p in summarized}
 
+        # Write updated summaries back in a fresh session
         async with AsyncSessionLocal() as db:
-            for row_id, post_id in [(r.id, r.post_id) for r in rows]:
-                result = await db.execute(select(SocialPost).where(SocialPost.id == row_id))
+            for item in post_dicts:
+                if item["post_id"] not in summary_map:
+                    continue
+                result = await db.execute(select(SocialPost).where(SocialPost.id == item["db_id"]))
                 row = result.scalar_one_or_none()
-                if row and post_id in summary_map:
-                    row.summary = summary_map[post_id]
+                if row:
+                    row.summary = summary_map[item["post_id"]]
                     row.summary_language = language
             await db.commit()
 
@@ -344,23 +354,23 @@ class SocialService:
                 q = q.where(SocialPost.x_handle == x_handle.lstrip("@").lower())
             result = await db.execute(q)
             posts = result.scalars().all()
-
-        return [
-            {
-                "id": p.id,
-                "post_id": p.post_id,
-                "x_handle": p.x_handle,
-                "stock": p.stock,
-                "content": p.content,
-                "summary": p.summary,
-                "summary_language": p.summary_language,
-                "image_urls": p.image_urls or [],
-                "referenced_post_id": p.referenced_post_id,
-                "referenced_content": p.referenced_content,
-                "posted_at": p.posted_at.isoformat() if p.posted_at else None,
-            }
-            for p in posts
-        ]
+            # Build dicts while session is still open to avoid DetachedInstanceError
+            return [
+                {
+                    "id": p.id,
+                    "post_id": p.post_id,
+                    "x_handle": p.x_handle,
+                    "stock": p.stock,
+                    "content": p.content,
+                    "summary": p.summary,
+                    "summary_language": p.summary_language,
+                    "image_urls": p.image_urls or [],
+                    "referenced_post_id": p.referenced_post_id,
+                    "referenced_content": p.referenced_content,
+                    "posted_at": p.posted_at.isoformat() if p.posted_at else None,
+                }
+                for p in posts
+            ]
 
 
 social_service = SocialService()
