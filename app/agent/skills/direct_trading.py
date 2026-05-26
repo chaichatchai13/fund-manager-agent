@@ -18,6 +18,14 @@ _DURATION_DESC = "Order duration: DAY (expires at market close) or GTC (Good Til
 
 TOOL_DEFINITIONS = [
     {
+        "name": "list_schwab_accounts",
+        "description": (
+            "List all Schwab accounts linked to the API key, showing which account hash is currently active. "
+            "Use this to diagnose order rejections — the wrong account may be selected."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
         "name": "buy_shares",
         "description": "Buy shares of a stock at market or limit price. Always confirm with user before calling.",
         "input_schema": {
@@ -122,15 +130,50 @@ async def _place_and_verify(order_spec: Any, label: str) -> dict:
             status_resp = await schwab_client.get_order(order_id)
             actual_status = status_resp.get("status", "UNKNOWN")
             result["status"] = actual_status
+
+            # Always log full Schwab response for rejected/cancelled orders so we can diagnose
             if actual_status in ("CANCELED", "CANCELLED", "REJECTED"):
-                cancel_reason = status_resp.get("cancelTime") or status_resp.get("statusDescription", "")
-                result["warning"] = (
-                    f"⚠️ Order was {actual_status} by Schwab immediately after placement. "
-                    f"This usually means the market is closed and the order used DAY duration. "
-                    f"Try again with duration=GTC to queue for next market open."
-                    + (f" Schwab reason: {cancel_reason}" if cancel_reason else "")
+                logger.warning(
+                    "Order rejected/cancelled by Schwab",
+                    label=label, order_id=order_id, status=actual_status,
+                    schwab_response=status_resp,  # full response for debugging
                 )
-                logger.warning("Order cancelled by Schwab after placement", label=label, order_id=order_id, status=actual_status)
+
+                # Extract every field Schwab might use to describe the reason
+                reason_parts = []
+                for key in ("statusDescription", "cancelType", "cancelTime", "closeTime", "tag"):
+                    val = status_resp.get(key)
+                    if val:
+                        reason_parts.append(f"{key}={val}")
+                reason_str = ", ".join(reason_parts) if reason_parts else "No reason provided by Schwab"
+
+                # Tailor guidance based on the situation
+                from app.scheduler.jobs import is_market_open
+                duration_used = status_resp.get("duration", "")
+                is_gtc = "CANCEL" in duration_used.upper() if duration_used else False
+
+                if not is_market_open() and not is_gtc:
+                    guidance = (
+                        "Market is currently closed and the order used DAY duration — it expired immediately. "
+                        "Retry with duration=GTC to queue for the next market open."
+                    )
+                else:
+                    guidance = (
+                        "Common causes of Schwab rejections:\n"
+                        "1. Account not opted in to third-party API trading — log in to schwab.com → "
+                        "Account Settings → enable third-party API access for your account.\n"
+                        "2. Wrong account selected — if you have multiple accounts, ask me to list them "
+                        "so you can verify the correct one is being used.\n"
+                        "3. Price sanity check — Schwab rejects limit prices that are too far from the "
+                        "current market price (e.g. a buy limit far above the current ask).\n"
+                        "4. Account restrictions — IRA accounts, accounts flagged as PDT, or accounts "
+                        "without options approval may restrict certain order types."
+                    )
+
+                result["warning"] = (
+                    f"⚠️ Order {order_id} was {actual_status} by Schwab. Schwab reason: {reason_str}\n\n"
+                    + guidance
+                )
             else:
                 logger.info("Order placed and verified", label=label, order_id=order_id, status=actual_status)
         except Exception as exc:
@@ -147,6 +190,37 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
     try:
         import schwab as schwab_lib
         import schwab.orders.common as common
+        from app.schwab.client import schwab_client
+
+        # ── Account diagnostic tool ────────────────────────────────────────────
+        if name == "list_schwab_accounts":
+            try:
+                import asyncio
+                from app.config import settings
+                if settings.mock_schwab:
+                    return {"accounts": [{"index": 0, "accountNumber": "MOCK_ACCT", "hashValue": "MOCK_HASH", "active": True}]}
+
+                response = await asyncio.to_thread(schwab_client._client.get_account_numbers)
+                accounts = response.json()
+                active_hash = schwab_client._account_hash or ""
+                result = []
+                for i, acct in enumerate(accounts):
+                    h = acct.get("hashValue", "")
+                    result.append({
+                        "index": i,
+                        "accountNumber": acct.get("accountNumber", "—"),
+                        "hashValue": h[:8] + "***" if h else "—",
+                        "active": h == active_hash,
+                    })
+                return {
+                    "accounts": result,
+                    "note": (
+                        "ThetaFlow always uses index 0. If your trading account is at a different index, "
+                        "this is why orders are being rejected. Contact support to add account selection."
+                    ),
+                }
+            except Exception as exc:
+                return {"error": str(exc)}
 
         duration_str = tool_input.get("duration", "DAY")
         duration = _schwab_duration(duration_str)
