@@ -160,11 +160,14 @@ class SocialService:
 
     # ── Summary with AI ──────────────────────────────────────────────────────
 
-    async def get_summary(self, stocks: list[str] = None, since_last_check: bool = True, language: str = "English") -> dict:
+    async def get_summary(self, stocks: list[str] = None, since_last_check: bool = True, language: str | None = None) -> dict:
         """
         Fetch and summarize posts for all watched accounts × stocks.
         Returns structured data suitable for the article-style UI.
         """
+        from app.config import settings
+        language = language or settings.social_summary_language or "English"
+
         if not self._api_configured():
             return {"posts": [], "message": "SOCIALDATA_API_KEY not configured. Sign up at https://socialdata.tools to enable X.com post summaries."}
 
@@ -195,8 +198,10 @@ class SocialService:
 
         return {"posts": summarized, "count": len(summarized)}
 
-    async def resummary_posts(self, post_ids: list[str] | None = None, language: str = "English") -> dict:
+    async def resummary_posts(self, post_ids: list[str] | None = None, language: str | None = None) -> dict:
         """Re-summarize existing cached posts in a given language and update the DB."""
+        from app.config import settings
+        language = language or settings.social_summary_language or "English"
         from sqlalchemy import desc
         async with AsyncSessionLocal() as db:
             q = select(SocialPost).order_by(desc(SocialPost.posted_at)).limit(100)

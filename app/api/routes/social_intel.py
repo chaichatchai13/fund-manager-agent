@@ -20,6 +20,13 @@ class ResummaryRequest(BaseModel):
     language: str = "English"
 
 
+@router.get("/config")
+async def get_config():
+    """Return server-side social intel configuration (e.g. default language)."""
+    from app.config import settings
+    return {"default_language": settings.social_summary_language or "English"}
+
+
 @router.get("/watchlist")
 async def get_watchlist():
     from app.services.social_service import social_service

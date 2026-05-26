@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # SocialData.tools (social intel skill)
     socialdata_api_key: str = ""
+    social_summary_language: str = "English"
 
     # PWA Push (VAPID keys — generate with: npx web-push generate-vapid-keys)
     vapid_public_key: str = ""

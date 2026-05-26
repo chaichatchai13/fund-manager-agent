@@ -68,6 +68,15 @@ export function SocialIntelTab() {
   const [refreshing, setRefreshing] = useState(false)
   const [resummarizing, setResummarizing] = useState(false)
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('social_lang') ?? 'English')
+
+  // Seed language from server default on first visit (no localStorage key yet)
+  useEffect(() => {
+    if (localStorage.getItem('social_lang')) return   // user already has a preference
+    fetch('/api/social/config')
+      .then(r => r.json())
+      .then(d => { if (d.default_language) setLanguage(d.default_language) })
+      .catch(() => {})
+  }, [])
   const [showWatchlist, setShowWatchlist] = useState(true)
 
   const LANGUAGES = ['English', 'Thai', 'Japanese', 'Chinese', 'Spanish', 'French', 'German', 'Korean']
