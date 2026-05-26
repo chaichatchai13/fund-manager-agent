@@ -201,10 +201,10 @@ class SocialService:
     async def resummary_posts(self, post_ids: list[str] | None = None, language: str | None = None) -> dict:
         """Re-summarize existing cached posts in a given language and update the DB."""
         from app.config import settings
-        from sqlalchemy import desc, or_
+        from sqlalchemy import desc, or_, update as sa_update
         language = language or settings.social_summary_language or "English"
 
-        # Fetch only posts that need updating — filter in SQL, extract data while session open
+        # Fetch posts that need updating — everything inside session to avoid DetachedInstanceError
         async with AsyncSessionLocal() as db:
             q = (
                 select(SocialPost)
@@ -213,7 +213,7 @@ class SocialService:
                 .where(
                     or_(
                         SocialPost.summary_language != language,
-                        SocialPost.summary_language == None,  # noqa: E711
+                        SocialPost.summary_language.is_(None),
                     )
                 )
             )
@@ -221,7 +221,6 @@ class SocialService:
                 q = q.where(SocialPost.post_id.in_(post_ids))
             result = await db.execute(q)
             rows = result.scalars().all()
-            # Extract all needed data while session is still open
             post_dicts = [
                 {
                     "db_id": r.id,
@@ -235,23 +234,23 @@ class SocialService:
             ]
 
         if not post_dicts:
+            logger.info("resummary_posts: all posts already in language", language=language)
             return {"updated": 0, "language": language, "message": "All posts already in this language"}
 
+        logger.info("resummary_posts: re-summarizing posts", count=len(post_dicts), language=language)
         summarized = await self._summarize_posts(post_dicts, language=language)
-        summary_map = {p["post_id"]: p["summary"] for p in summarized}
 
-        # Write updated summaries back in a fresh session
+        # Bulk-update each post using individual UPDATE statements (avoids N+1 ORM fetch)
         async with AsyncSessionLocal() as db:
-            for item in post_dicts:
-                if item["post_id"] not in summary_map:
-                    continue
-                result = await db.execute(select(SocialPost).where(SocialPost.id == item["db_id"]))
-                row = result.scalar_one_or_none()
-                if row:
-                    row.summary = summary_map[item["post_id"]]
-                    row.summary_language = language
+            for item in summarized:
+                await db.execute(
+                    sa_update(SocialPost)
+                    .where(SocialPost.id == item["db_id"])
+                    .values(summary=item["summary"], summary_language=language)
+                )
             await db.commit()
 
+        logger.info("resummary_posts: done", updated=len(summarized), language=language)
         return {"updated": len(summarized), "language": language}
 
     async def _summarize_posts(self, posts: list[dict], language: str = "English") -> list[dict]:

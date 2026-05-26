@@ -68,6 +68,7 @@ export function SocialIntelTab() {
   const [loadingFeed, setLoadingFeed] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [resummarizing, setResummarizing] = useState(false)
+  const [resummarizingError, setResummarizingError] = useState<string | null>(null)
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('social_lang') ?? 'English')
 
   // Seed language from server default on first visit (no localStorage key yet)
@@ -135,15 +136,23 @@ export function SocialIntelTab() {
 
   const applyLanguage = async () => {
     setResummarizing(true)
+    setResummarizingError(null)
     try {
       const ids = visiblePosts.map((p) => p.post_id)
-      await fetch('/api/social/resummary', {
+      const res = await fetch('/api/social/resummary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ post_ids: ids.length ? ids : null, language }),
       })
-      await fetchFeed()
-    } catch { /* ignore */ }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `Server error ${res.status}` }))
+        setResummarizingError(err.detail ?? `Error ${res.status}`)
+      } else {
+        await fetchFeed()
+      }
+    } catch (e) {
+      setResummarizingError('Network error — check server logs')
+    }
     setResummarizing(false)
   }
 
@@ -294,6 +303,17 @@ export function SocialIntelTab() {
             {refreshing ? 'Refreshing…' : '↻ Refresh'}
           </button>
         </div>
+
+        {resummarizingError && (
+          <div style={{
+            background: '#2a0d0d', border: '1px solid #f85149', borderRadius: 8,
+            padding: '10px 14px', marginBottom: 10, color: '#f85149', fontSize: 12,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span>⚠ Translation failed: {resummarizingError}</span>
+            <button onClick={() => setResummarizingError(null)} style={{ background: 'none', border: 'none', color: '#f85149', cursor: 'pointer', fontSize: 16 }}>×</button>
+          </div>
+        )}
 
         {loadingFeed && (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>
