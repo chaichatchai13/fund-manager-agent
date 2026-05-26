@@ -193,7 +193,7 @@ class SocialService:
         summarized = await self._summarize_posts(all_posts, language=language)
 
         # Save to DB + update last_checked
-        await self._save_posts(summarized)
+        await self._save_posts(summarized, language=language)
         await self._update_last_checked(watchlist, stocks)
 
         return {"posts": summarized, "count": len(summarized)}
@@ -213,6 +213,11 @@ class SocialService:
         if not rows:
             return {"updated": 0}
 
+        # Skip posts already summarized in the requested language
+        needs_update = [r for r in rows if r.summary_language != language]
+        if not needs_update:
+            return {"updated": 0, "skipped": len(rows), "language": language, "message": "All posts already in this language"}
+
         post_dicts = [
             {
                 "post_id": r.post_id,
@@ -221,8 +226,9 @@ class SocialService:
                 "content": r.content,
                 "referenced_content": r.referenced_content,
             }
-            for r in rows
+            for r in needs_update
         ]
+        rows = needs_update
 
         summarized = await self._summarize_posts(post_dicts, language=language)
         summary_map = {p["post_id"]: p["summary"] for p in summarized}
@@ -233,6 +239,7 @@ class SocialService:
                 row = result.scalar_one_or_none()
                 if row and post_id in summary_map:
                     row.summary = summary_map[post_id]
+                    row.summary_language = language
             await db.commit()
 
         return {"updated": len(summarized), "language": language}
@@ -269,7 +276,7 @@ class SocialService:
 
         return result
 
-    async def _save_posts(self, posts: list[dict]) -> None:
+    async def _save_posts(self, posts: list[dict], language: str = "English") -> None:
         async with AsyncSessionLocal() as db:
             for post in posts:
                 result = await db.execute(select(SocialPost).where(SocialPost.post_id == post["post_id"]))
@@ -286,6 +293,7 @@ class SocialService:
                     stock=post["stock"],
                     content=post["content"],
                     summary=post.get("summary"),
+                    summary_language=language if post.get("summary") else None,
                     image_urls=post.get("image_urls"),
                     referenced_post_id=post.get("referenced_post_id"),
                     referenced_content=post.get("referenced_content"),
@@ -345,6 +353,7 @@ class SocialService:
                 "stock": p.stock,
                 "content": p.content,
                 "summary": p.summary,
+                "summary_language": p.summary_language,
                 "image_urls": p.image_urls or [],
                 "referenced_post_id": p.referenced_post_id,
                 "referenced_content": p.referenced_content,

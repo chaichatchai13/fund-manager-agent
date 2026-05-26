@@ -33,6 +33,7 @@ class SocialPost(Base):
     stock = Column(String(20), nullable=False, index=True)
     content = Column(Text, nullable=False)
     summary = Column(Text, nullable=True)                         # AI-generated summary
+    summary_language = Column(String(50), nullable=True)          # language the summary was written in
     image_urls = Column(JSON, nullable=True)                      # list of image URLs
     referenced_post_id = Column(String(100), nullable=True)      # one-level cross-reference
     referenced_content = Column(Text, nullable=True)

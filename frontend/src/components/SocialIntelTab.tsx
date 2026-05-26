@@ -24,6 +24,7 @@ interface SocialPost {
   stock: string
   content: string
   summary: string
+  summary_language: string | null
   image_urls: string[]
   referenced_content: string | null
   posted_at: string
@@ -123,6 +124,9 @@ export function SocialIntelTab() {
   const visiblePosts = filterHandle === 'all'
     ? posts
     : posts.filter((p) => p.x_handle === filterHandle)
+
+  // Posts whose summary_language doesn't match the selected language
+  const staleCount = visiblePosts.filter(p => p.summary_language !== language).length
 
   const changeLanguage = (lang: string) => {
     setLanguage(lang)
@@ -261,19 +265,18 @@ export function SocialIntelTab() {
             </select>
             <button
               onClick={applyLanguage}
-              disabled={resummarizing || visiblePosts.length === 0}
-              title={`Re-summarize all visible posts in ${language}`}
+              disabled={resummarizing || staleCount === 0}
+              title={staleCount === 0 ? `All posts already in ${language}` : `Re-summarize ${staleCount} post${staleCount !== 1 ? 's' : ''} in ${language}`}
               style={{
                 padding: '5px 10px', fontSize: 12, fontWeight: 600,
-                background: resummarizing ? '#21262d' : '#1a3028',
-                color: resummarizing ? MUTED : GREEN,
-                border: `1px solid ${resummarizing ? BORDER : '#3fb95044'}`,
-                borderRadius: 7, cursor: resummarizing ? 'not-allowed' : 'pointer',
+                background: staleCount === 0 ? '#21262d' : '#1a3028',
+                color: staleCount === 0 ? '#484f58' : GREEN,
+                border: `1px solid ${staleCount === 0 ? BORDER : '#3fb95044'}`,
+                borderRadius: 7, cursor: (resummarizing || staleCount === 0) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', whiteSpace: 'nowrap',
-                opacity: visiblePosts.length === 0 ? 0.4 : 1,
               }}
             >
-              {resummarizing ? 'Translating…' : 'Apply'}
+              {resummarizing ? 'Translating…' : staleCount > 0 ? `Apply (${staleCount})` : 'Up to date ✓'}
             </button>
           </div>
 
