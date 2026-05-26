@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { OptionPosition } from './types'
 import { ChatPane } from './components/ChatPane'
 import { LoginPage } from './components/LoginPage'
@@ -44,6 +44,9 @@ export default function App() {
   return <Dashboard logout={logout} />
 }
 
+const AUTO_REFRESH_MS = 15 * 60 * 1000  // 15 minutes
+const PULL_THRESHOLD = 70               // px to pull before triggering refresh
+
 function Dashboard({ logout }: { logout: () => void }) {
   const isMobile = useIsMobile()
   const [tab, setTab] = useState<Tab>('dashboard')
@@ -51,6 +54,12 @@ function Dashboard({ logout }: { logout: () => void }) {
   const [summary, setSummary] = useState<PerformanceSummary | null>(null)
   const [account, setAccount] = useState<{ portfolio_value: number | null; buying_power: number | null } | null>(null)
   const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Pull-to-refresh tracking refs
+  const touchStartY = useRef(0)
+  const [pullProgress, setPullProgress] = useState(0)  // 0–1
+  const refreshFnRef = useRef<() => Promise<void>>(async () => {})
 
   usePushNotifications()
 
@@ -63,12 +72,69 @@ function Dashboard({ logout }: { logout: () => void }) {
     return () => window.removeEventListener('open-chat', handler)
   }, [])
 
+  const refreshPositions = useCallback(async () => {
+    const [res1, res2] = await Promise.all([
+      fetch('/api/positions?status=OPEN'),
+      fetch('/api/positions?status=CLOSING'),
+    ])
+    if (res1.ok && res2.ok) {
+      const [open, closing] = await Promise.all([res1.json(), res2.json()])
+      setPositions([...open, ...closing])
+    }
+  }, [setPositions])
+
+  const refresh = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      await Promise.all([
+        fetch('/api/performance/summary?period=today').then(r => r.json()).then(setSummary).catch(() => {}),
+        fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {}),
+        refreshPositions(),
+      ])
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [refreshPositions])
+
+  // Keep refreshFnRef current so the touch handler always calls the latest version
+  useEffect(() => { refreshFnRef.current = refresh }, [refresh])
+
+  // Initial data fetch
+  useEffect(() => { refresh() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 15-minute auto-refresh
   useEffect(() => {
-    fetch('/api/performance/summary?period=today').then(r => r.json()).then(setSummary).catch(() => {})
+    const id = setInterval(() => { refreshFnRef.current() }, AUTO_REFRESH_MS)
+    return () => clearInterval(id)
   }, [])
 
+  // Pull-to-refresh touch handlers
   useEffect(() => {
-    fetch('/api/account').then(r => r.json()).then(setAccount).catch(() => {})
+    const onTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) touchStartY.current = e.touches[0].clientY
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartY.current === 0) return
+      const delta = e.touches[0].clientY - touchStartY.current
+      if (delta > 0 && window.scrollY === 0) {
+        setPullProgress(Math.min(delta / PULL_THRESHOLD, 1))
+      }
+    }
+    const onTouchEnd = () => {
+      setPullProgress(p => {
+        if (p >= 1) refreshFnRef.current()
+        return 0
+      })
+      touchStartY.current = 0
+    }
+    document.addEventListener('touchstart', onTouchStart, { passive: true })
+    document.addEventListener('touchmove', onTouchMove, { passive: true })
+    document.addEventListener('touchend', onTouchEnd)
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onTouchEnd)
+    }
   }, [])
 
   const closePosition = async (positionId: string) => {
@@ -92,16 +158,6 @@ function Dashboard({ logout }: { logout: () => void }) {
     } else {
       const err = await res.json().catch(() => ({ detail: 'Unknown error' }))
       alert(`Roll failed: ${err.detail}`)
-    }
-  }
-
-  const refreshPositions = async () => {
-    const res = await fetch('/api/positions?status=OPEN')
-    if (res.ok) {
-      const open = await res.json()
-      const res2 = await fetch('/api/positions?status=CLOSING')
-      const closing = res2.ok ? await res2.json() : []
-      setPositions([...open, ...closing])
     }
   }
 
@@ -143,6 +199,29 @@ function Dashboard({ logout }: { logout: () => void }) {
 
   return (
     <div style={{ minHeight: '100vh', background: BG, fontFamily: "'Inter', system-ui, sans-serif" }}>
+
+      {/* ── Pull-to-refresh indicator ── */}
+      {(pullProgress > 0 || isRefreshing) && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          height: isRefreshing ? 44 : `${pullProgress * 44}px`,
+          background: '#1f6feb',
+          overflow: 'hidden',
+          transition: isRefreshing ? 'none' : 'height 0.1s',
+        }}>
+          <span style={{
+            color: '#fff', fontSize: 13, fontWeight: 600,
+            opacity: pullProgress >= 1 || isRefreshing ? 1 : pullProgress,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{ display: 'inline-block', animation: isRefreshing ? 'spin 1s linear infinite' : 'none', fontSize: 16 }}>
+              {isRefreshing ? '↻' : pullProgress >= 1 ? '↓ Release to refresh' : '↓ Pull to refresh'}
+            </span>
+            {isRefreshing && 'Refreshing…'}
+          </span>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <header style={{
@@ -288,7 +367,7 @@ function Dashboard({ logout }: { logout: () => void }) {
         )}
 
         {tab === 'rules'    && <RulesPanel />}
-        {tab === 'chat'     && <ChatPane prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} />}
+        {tab === 'chat'     && <ChatPane prefillMessage={chatPrefill} onPrefillConsumed={() => setChatPrefill(undefined)} positions={openPositions} account={account} />}
         {tab === 'social'   && <SocialIntelTab />}
         {tab === 'alerts'   && <AlertsPanel />}
         {tab === 'settings' && <SettingsPanel />}
