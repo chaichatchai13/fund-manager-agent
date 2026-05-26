@@ -501,13 +501,14 @@ function InlineChat({ posts }: { posts: SocialPost[] }) {
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages — justifyContent flex-end pins messages to the bottom */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
         padding: '12px',
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'flex-end',
         gap: 8,
       }}>
         {messages.map((msg, i) => (
