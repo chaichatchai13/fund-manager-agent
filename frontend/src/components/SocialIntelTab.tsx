@@ -79,10 +79,16 @@ export function SocialIntelTab() {
       .then(d => { if (d.default_language) setLanguage(d.default_language) })
       .catch(() => {})
   }, [])
-  const [showWatchlist, setShowWatchlist] = useState(true)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900)
+  const [showWatchlist, setShowWatchlist] = useState(false)  // hidden by default on mobile
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 900)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const LANGUAGES = ['English', 'Thai', 'Japanese', 'Chinese', 'Spanish', 'French', 'German', 'Korean']
-  const isMobile = window.innerWidth < 900
 
   const allStocks = Array.from(new Set(watchlist.flatMap((w) => w.stocks))).sort()
   const allHandles = watchlist.map((w) => w.x_handle)
@@ -157,65 +163,78 @@ export function SocialIntelTab() {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: 0 }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      gap: 12,
+      alignItems: 'flex-start',
+      minHeight: 0,
+    }}>
 
-      {/* ── Left panel: Watchlist ─────────────────────────────────────────── */}
-      {(!isMobile || showWatchlist) && (
+      {/* ── Desktop: Left panel / Mobile: collapsible top panel ──────────── */}
+      {!isMobile && (
         <div style={{
-          flex: `0 0 ${isMobile ? '100%' : '240px'}`,
+          flex: '0 0 240px',
           background: CARD_BG,
           border: `1px solid ${BORDER}`,
           borderRadius: 12,
           overflow: 'hidden',
-          position: isMobile ? undefined : 'sticky',
-          top: isMobile ? undefined : 16,
-          maxHeight: isMobile ? undefined : 'calc(100vh - 120px)',
+          position: 'sticky',
+          top: 16,
+          maxHeight: 'calc(100vh - 120px)',
           overflowY: 'auto',
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}` }}>
             <h3 style={{ color: '#e6edf3', fontWeight: 600, fontSize: 14, margin: 0 }}>X Watchlist</h3>
-            {isMobile && (
-              <button onClick={() => setShowWatchlist(false)} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: 18 }}>×</button>
-            )}
           </div>
-
           {watchlist.length === 0 && (
-            <div style={{ padding: '20px 16px', color: '#484f58', fontSize: 13, textAlign: 'center' }}>
-              No accounts yet.
-            </div>
+            <div style={{ padding: '20px 16px', color: '#484f58', fontSize: 13, textAlign: 'center' }}>No accounts yet.</div>
           )}
-
           {watchlist.map((entry, idx) => (
-            <WatchlistRow
-              key={entry.x_handle}
-              entry={entry}
-              isLast={idx === watchlist.length - 1}
-              onRemove={() => {
-                fetch(`/api/social/watchlist/${entry.x_handle}`, { method: 'DELETE' })
-                  .then(fetchWatchlist)
-              }}
-            />
+            <WatchlistRow key={entry.x_handle} entry={entry} isLast={idx === watchlist.length - 1}
+              onRemove={() => { fetch(`/api/social/watchlist/${entry.x_handle}`, { method: 'DELETE' }).then(fetchWatchlist) }} />
           ))}
-
           <AddWatchlistForm onAdded={fetchWatchlist} />
         </div>
       )}
 
       {/* ── Center panel: Feed ───────────────────────────────────────────── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
 
-        {/* Mobile toggle for watchlist */}
-        {isMobile && !showWatchlist && (
-          <button
-            onClick={() => setShowWatchlist(true)}
-            style={{
-              marginBottom: 10, padding: '6px 12px', fontSize: 12,
-              background: '#21262d', border: `1px solid ${BORDER}`,
-              borderRadius: 7, color: MUTED, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            ☰ Watchlist
-          </button>
+        {/* Mobile: watchlist toggle button + collapsible panel */}
+        {isMobile && (
+          <div style={{ marginBottom: 10 }}>
+            <button
+              onClick={() => setShowWatchlist(v => !v)}
+              style={{
+                padding: '7px 14px', fontSize: 12, fontWeight: 500,
+                background: showWatchlist ? CARD_BG : '#21262d',
+                border: `1px solid ${showWatchlist ? '#58a6ff' : BORDER}`,
+                borderRadius: 7, color: showWatchlist ? '#58a6ff' : MUTED,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {showWatchlist ? '✕ Close Watchlist' : '☰ Watchlist'}
+            </button>
+            {showWatchlist && (
+              <div style={{
+                marginTop: 8, background: CARD_BG,
+                border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden',
+              }}>
+                <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}` }}>
+                  <h3 style={{ color: '#e6edf3', fontWeight: 600, fontSize: 13, margin: 0 }}>X Watchlist</h3>
+                </div>
+                {watchlist.length === 0 && (
+                  <div style={{ padding: '16px', color: '#484f58', fontSize: 12, textAlign: 'center' }}>No accounts yet.</div>
+                )}
+                {watchlist.map((entry, idx) => (
+                  <WatchlistRow key={entry.x_handle} entry={entry} isLast={idx === watchlist.length - 1}
+                    onRemove={() => { fetch(`/api/social/watchlist/${entry.x_handle}`, { method: 'DELETE' }).then(fetchWatchlist) }} />
+                ))}
+                <AddWatchlistForm onAdded={fetchWatchlist} />
+              </div>
+            )}
+          </div>
         )}
 
         {/* Feed toolbar */}
@@ -338,7 +357,7 @@ export function SocialIntelTab() {
         </div>
       </div>
 
-      {/* ── Right panel: Inline Agent Chat ───────────────────────────────── */}
+      {/* ── Right panel: Inline Agent Chat (desktop) ─────────────────────── */}
       {!isMobile && (
         <div style={{
           flex: '0 0 320px',
@@ -350,10 +369,8 @@ export function SocialIntelTab() {
         </div>
       )}
 
-      {/* Mobile: floating chat button + bottom sheet */}
-      {isMobile && (
-        <MobileChatSheet posts={visiblePosts} />
-      )}
+      {/* Mobile: chat below the feed as a collapsible card */}
+      {isMobile && <MobileChatSheet posts={visiblePosts} />}
     </div>
   )
 }
@@ -604,58 +621,32 @@ function MobileChatSheet({ posts }: { posts: SocialPost[] }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <>
-      {/* Floating button */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            position: 'fixed', bottom: 20, right: 16, zIndex: 50,
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #1f6feb, #3fb950)',
-            border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, boxShadow: '0 4px 20px rgba(31,111,235,0.5)',
-          }}
-        >
-          💬
-        </button>
-      )}
-
-      {/* Sheet */}
+    <div style={{ width: '100%' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', padding: '10px 14px',
+          background: open ? CARD_BG : '#21262d',
+          border: `1px solid ${open ? '#58a6ff' : BORDER}`,
+          borderRadius: open ? '10px 10px 0 0' : 10,
+          color: open ? '#58a6ff' : MUTED,
+          fontSize: 13, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}
+      >
+        <span>🤖 Agent Chat</span>
+        <span style={{ fontSize: 11, opacity: 0.7 }}>{open ? '▲ Hide' : '▼ Show'}</span>
+      </button>
       {open && (
         <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          height: '65vh',
-          background: CARD_BG,
-          borderTop: `2px solid ${BORDER}`,
-          borderRadius: '14px 14px 0 0',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+          height: 420, border: `1px solid #58a6ff`,
+          borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden',
         }}>
-          {/* Sheet handle */}
-          <div style={{ padding: '10px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: BORDER }} />
-          </div>
-          {/* Close */}
-          <button
-            onClick={() => setOpen(false)}
-            style={{
-              position: 'absolute', top: 8, right: 14,
-              background: 'none', border: 'none', color: MUTED,
-              fontSize: 22, cursor: 'pointer', lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
-          {/* Inline chat fills the sheet */}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <InlineChat posts={posts} />
-          </div>
+          <InlineChat posts={posts} />
         </div>
       )}
-    </>
+    </div>
   )
 }
 
