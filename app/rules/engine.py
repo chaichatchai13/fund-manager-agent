@@ -163,6 +163,13 @@ class RulesEngine:
             min_premium_mode = getattr(rule, 'min_premium_mode', 'pct') or 'pct'
             min_premium_dollar_val = getattr(rule, 'min_premium_dollar', None)
 
+            # New filter values
+            strike_min = getattr(rule, 'strike_min', None)
+            strike_max = getattr(rule, 'strike_max', None)
+            max_premium_dollar_val = getattr(rule, 'max_premium_dollar', None)
+            min_iv_pct = getattr(rule, 'min_iv_pct', None)
+            max_iv_pct = getattr(rule, 'max_iv_pct', None)
+
             # Filter candidates
             passing = []
             for c in candidates:
@@ -174,13 +181,25 @@ class RulesEngine:
                 else:
                     if not check_otm_put(c):
                         continue
+                # Strike range filter
+                if strike_min is not None and c.strike < strike_min:
+                    continue
+                if strike_max is not None and c.strike > strike_max:
+                    continue
                 # Premium check — dollar mode bypasses pct check
                 if min_premium_mode == 'dollar' and min_premium_dollar_val is not None:
                     if c.mid < min_premium_dollar_val:
                         continue
+                    if max_premium_dollar_val is not None and c.mid > max_premium_dollar_val:
+                        continue
                 else:
                     if not check_premium_pct(c, rule.min_premium_pct, rule.max_premium_pct):
                         continue
+                # Implied volatility % filter
+                if min_iv_pct is not None and c.iv < min_iv_pct:
+                    continue
+                if max_iv_pct is not None and c.iv > max_iv_pct:
+                    continue
                 if not check_delta(c, rule.min_delta, rule.max_delta):
                     continue
                 if not check_iv_rank(c, rule.min_iv_rank):

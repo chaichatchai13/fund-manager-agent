@@ -44,6 +44,21 @@ class SellPutRule(Base):
     position_size_contracts: Mapped[int | None] = mapped_column(Integer, nullable=True)  # fixed contract count (mode=contracts)
     max_position_size_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # Strike price range filter (optional)
+    strike_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+    strike_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Max premium in dollar mode (complements min_premium_dollar)
+    max_premium_dollar: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Order fill price: 0.0=bid, 0.5=mid (default), 1.0=ask
+    # price = bid + (ask - bid) * bid_ask_fill_pct
+    bid_ask_fill_pct: Mapped[float] = mapped_column(Float, default=0.5)
+
+    # Implied volatility % filters (actual IV%, not IV rank)
+    min_iv_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    max_iv_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     # Optional secondary filters
     min_delta: Mapped[float | None] = mapped_column(Float, nullable=True)
     max_delta: Mapped[float | None] = mapped_column(Float, nullable=True)

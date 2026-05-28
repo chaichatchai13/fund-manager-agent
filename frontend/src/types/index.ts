@@ -42,6 +42,12 @@ export interface SellPutRule {
   itm_action: 'let_assign' | 'roll'
   roll_when_dte: number
   roll_target_weeks: number
+  strike_min: number | null
+  strike_max: number | null
+  max_premium_dollar: number | null
+  bid_ask_fill_pct: number
+  min_iv_pct: number | null
+  max_iv_pct: number | null
   last_error: string | null
   last_error_at: string | null
 }

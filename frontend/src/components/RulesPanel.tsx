@@ -253,6 +253,27 @@ function RuleRow({
             ) : (
               <StatChip label="ITM" value="Let assign" color="#8b949e" />
             )}
+            {(rule.strike_min != null || rule.strike_max != null) && (
+              <StatChip
+                label="Strike"
+                value={`${rule.strike_min != null ? `$${rule.strike_min}` : '—'}–${rule.strike_max != null ? `$${rule.strike_max}` : '—'}`}
+                color="#a5d6ff"
+              />
+            )}
+            {(rule.min_iv_pct != null || rule.max_iv_pct != null) && (
+              <StatChip
+                label="IV%"
+                value={`${rule.min_iv_pct != null ? `${rule.min_iv_pct}%` : '—'}–${rule.max_iv_pct != null ? `${rule.max_iv_pct}%` : '—'}`}
+                color="#d2a8ff"
+              />
+            )}
+            {rule.bid_ask_fill_pct != null && rule.bid_ask_fill_pct !== 0.5 && (
+              <StatChip
+                label="Fill"
+                value={`${(rule.bid_ask_fill_pct * 100).toFixed(0)}% B/A`}
+                color="#ffa657"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -317,7 +338,17 @@ function RuleFormModal({
     // Premium
     min_premium_mode: (existingRule?.min_premium_mode ?? 'pct') as 'pct' | 'dollar',
     min_premium_pct: existingRule?.min_premium_pct ?? 1.0,
+    max_premium_pct: existingRule?.max_premium_pct ?? '',
     min_premium_dollar: existingRule?.min_premium_dollar ?? 2.0,
+    max_premium_dollar: existingRule?.max_premium_dollar ?? '',
+    // Order fill price (0=bid, 50=mid, 100=ask)
+    bid_ask_fill_pct: Math.round((existingRule?.bid_ask_fill_pct ?? 0.5) * 100),
+    // Strike range
+    strike_min: existingRule?.strike_min != null ? String(existingRule.strike_min) : '',
+    strike_max: existingRule?.strike_max != null ? String(existingRule.strike_max) : '',
+    // IV % filter
+    min_iv_pct: existingRule?.min_iv_pct != null ? String(existingRule.min_iv_pct) : '',
+    max_iv_pct: existingRule?.max_iv_pct != null ? String(existingRule.max_iv_pct) : '',
     // Profit
     profit_target_pct: existingRule?.profit_target_pct ?? 0.75,
     min_daily_drop_pct: existingRule?.min_daily_drop_pct != null ? String(existingRule.min_daily_drop_pct) : '',
@@ -352,7 +383,16 @@ function RuleFormModal({
       max_dte: form.max_dte,
       min_premium_mode: form.min_premium_mode,
       min_premium_pct: form.min_premium_pct,
+      max_premium_pct: form.min_premium_mode === 'pct' && form.max_premium_pct !== ''
+        ? parseFloat(String(form.max_premium_pct)) : null,
       min_premium_dollar: form.min_premium_mode === 'dollar' ? form.min_premium_dollar : null,
+      max_premium_dollar: form.min_premium_mode === 'dollar' && form.max_premium_dollar !== ''
+        ? parseFloat(String(form.max_premium_dollar)) : null,
+      bid_ask_fill_pct: form.bid_ask_fill_pct / 100,
+      strike_min: form.strike_min !== '' ? parseFloat(String(form.strike_min)) : null,
+      strike_max: form.strike_max !== '' ? parseFloat(String(form.strike_max)) : null,
+      min_iv_pct: form.min_iv_pct !== '' ? parseFloat(String(form.min_iv_pct)) : null,
+      max_iv_pct: form.max_iv_pct !== '' ? parseFloat(String(form.max_iv_pct)) : null,
       profit_target_pct: form.profit_target_pct,
       min_daily_drop_pct: !isCoveredCall && form.min_daily_drop_pct
         ? parseFloat(form.min_daily_drop_pct)
@@ -486,10 +526,10 @@ function RuleFormModal({
           {field('Min DTE', 'min_dte', 'number')}
           {field('Max DTE', 'max_dte', 'number')}
 
-          {/* ── Min Premium ── */}
+          {/* ── Premium Filter ── */}
           <div style={{ gridColumn: '1 / -1' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <label style={{ ...labelStyle, marginBottom: 0 }}>Min Premium</label>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Premium Filter</label>
               <PillToggle
                 labelA="% of stock price" labelB="$ amount"
                 value={form.min_premium_mode === 'pct' ? 'a' : 'b'}
@@ -497,27 +537,126 @@ function RuleFormModal({
               />
             </div>
             {form.min_premium_mode === 'pct' ? (
-              <div>
-                <input type="number" step="0.1" value={form.min_premium_pct}
-                  onChange={(e) => setForm((f) => ({ ...f, min_premium_pct: parseFloat(e.target.value) || 0 }))}
-                  style={inputStyle}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
-                <div style={{ marginTop: 4, fontSize: 11, color: '#8b949e' }}>e.g. 5% on a $38 stock → min premium ≈ $1.90</div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>$</span>
-                  <input type="number" step="0.01" value={form.min_premium_dollar}
-                    onChange={(e) => setForm((f) => ({ ...f, min_premium_dollar: parseFloat(e.target.value) || 0 }))}
-                    style={{ ...inputStyle, paddingLeft: 22 }}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ ...labelStyle }}>Min %</label>
+                  <input type="number" step="0.1" placeholder="e.g. 1.0" value={form.min_premium_pct}
+                    onChange={(e) => setForm((f) => ({ ...f, min_premium_pct: parseFloat(e.target.value) || 0 }))}
+                    style={inputStyle}
                     onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
                     onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
                 </div>
-                <div style={{ marginTop: 4, fontSize: 11, color: '#8b949e' }}>e.g. $2.00 — scanner requires at least $2 mid-price premium</div>
+                <div>
+                  <label style={{ ...labelStyle }}>Max % (optional)</label>
+                  <input type="number" step="0.1" placeholder="e.g. 5.0" value={form.max_premium_pct}
+                    onChange={(e) => setForm((f) => ({ ...f, max_premium_pct: e.target.value }))}
+                    style={inputStyle}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+                </div>
+                <div style={{ gridColumn: '1 / -1', fontSize: 11, color: '#8b949e', marginTop: -4 }}>
+                  e.g. Min 1% Max 5% on a $38 stock → premium between $0.38 – $1.90
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ ...labelStyle }}>Min $</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>$</span>
+                    <input type="number" step="0.01" placeholder="e.g. 1.00" value={form.min_premium_dollar}
+                      onChange={(e) => setForm((f) => ({ ...f, min_premium_dollar: parseFloat(e.target.value) || 0 }))}
+                      style={{ ...inputStyle, paddingLeft: 22 }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ ...labelStyle }}>Max $ (optional)</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>$</span>
+                    <input type="number" step="0.01" placeholder="e.g. 5.00" value={form.max_premium_dollar}
+                      onChange={(e) => setForm((f) => ({ ...f, max_premium_dollar: e.target.value }))}
+                      style={{ ...inputStyle, paddingLeft: 22 }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+                  </div>
+                </div>
+                <div style={{ gridColumn: '1 / -1', fontSize: 11, color: '#8b949e', marginTop: -4 }}>
+                  Scanner requires mid-price premium between Min and Max
+                </div>
               </div>
             )}
+          </div>
+
+          {/* ── Order Fill Price ── */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={labelStyle}>
+              Order Fill Price — {form.bid_ask_fill_pct === 0 ? 'Bid (aggressive fill)' : form.bid_ask_fill_pct === 100 ? 'Ask (max premium)' : form.bid_ask_fill_pct === 50 ? 'Mid (balanced)' : `${form.bid_ask_fill_pct}% between bid and ask`}
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 11, color: '#8b949e', flexShrink: 0 }}>Bid</span>
+              <input
+                type="range" min={0} max={100} step={5} value={form.bid_ask_fill_pct}
+                onChange={(e) => setForm((f) => ({ ...f, bid_ask_fill_pct: parseInt(e.target.value) }))}
+                style={{ flex: 1, accentColor: '#58a6ff' }}
+              />
+              <span style={{ fontSize: 11, color: '#8b949e', flexShrink: 0 }}>Ask</span>
+              <span style={{ fontSize: 12, color: '#e6edf3', fontWeight: 600, width: 36, textAlign: 'right', flexShrink: 0 }}>
+                {form.bid_ask_fill_pct}%
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: '#8b949e', marginTop: 4 }}>
+              e.g. bid $1.00 ask $2.00 at 50% → order placed at $1.50. Lower % = easier to fill, higher % = more premium.
+            </div>
+          </div>
+
+          {/* ── Strike Range ── */}
+          <div>
+            <label style={labelStyle}>Min Strike $ (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>$</span>
+              <input type="number" step="0.5" placeholder="e.g. 5.00" value={form.strike_min}
+                onChange={(e) => setForm((f) => ({ ...f, strike_min: e.target.value }))}
+                style={{ ...inputStyle, paddingLeft: 22 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Max Strike $ (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>$</span>
+              <input type="number" step="0.5" placeholder="e.g. 30.00" value={form.strike_max}
+                onChange={(e) => setForm((f) => ({ ...f, strike_max: e.target.value }))}
+                style={{ ...inputStyle, paddingLeft: 22 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+            </div>
+          </div>
+
+          {/* ── IV % Filter ── */}
+          <div>
+            <label style={labelStyle}>Min IV % (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <input type="number" step="1" placeholder="e.g. 30" value={form.min_iv_pct}
+                onChange={(e) => setForm((f) => ({ ...f, min_iv_pct: e.target.value }))}
+                style={{ ...inputStyle, paddingRight: 28 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>%</span>
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Max IV % (optional)</label>
+            <div style={{ position: 'relative' }}>
+              <input type="number" step="1" placeholder="e.g. 150" value={form.max_iv_pct}
+                onChange={(e) => setForm((f) => ({ ...f, max_iv_pct: e.target.value }))}
+                style={{ ...inputStyle, paddingRight: 28 }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = '#58a6ff')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = '#30363d')} />
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: 13 }}>%</span>
+            </div>
           </div>
 
           {field('Profit Target (e.g. 0.75 = 75%)', 'profit_target_pct', 'number', '0.05')}

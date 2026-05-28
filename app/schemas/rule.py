@@ -38,6 +38,13 @@ class SellPutRuleCreate(BaseModel):
     itm_action: str = "let_assign"
     roll_when_dte: int = 7
     roll_target_weeks: int = 4
+    # New filters
+    strike_min: float | None = None
+    strike_max: float | None = None
+    max_premium_dollar: float | None = None
+    bid_ask_fill_pct: float = 0.5
+    min_iv_pct: float | None = None
+    max_iv_pct: float | None = None
 
 
 class SellPutRuleUpdate(BaseModel):
@@ -69,6 +76,13 @@ class SellPutRuleUpdate(BaseModel):
     itm_action: str | None = None
     roll_when_dte: int | None = None
     roll_target_weeks: int | None = None
+    # New filters
+    strike_min: float | None = None
+    strike_max: float | None = None
+    max_premium_dollar: float | None = None
+    bid_ask_fill_pct: float | None = None
+    min_iv_pct: float | None = None
+    max_iv_pct: float | None = None
 
 
 class SellPutRuleResponse(BaseModel):
@@ -103,6 +117,12 @@ class SellPutRuleResponse(BaseModel):
     itm_action: str
     roll_when_dte: int
     roll_target_weeks: int
+    strike_min: float | None
+    strike_max: float | None
+    max_premium_dollar: float | None
+    bid_ask_fill_pct: float
+    min_iv_pct: float | None
+    max_iv_pct: float | None
     last_error: str | None
     last_error_at: datetime | None
     created_at: datetime

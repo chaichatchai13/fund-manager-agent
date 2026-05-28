@@ -99,10 +99,21 @@ class ScanService:
             placed_rule_id = candidate.rule.id if hasattr(candidate, "rule") and candidate.rule else None
 
             try:
+                # Compute limit price using bid/ask fill percentage
+                # 0.0 = bid (aggressive fill), 0.5 = mid (default), 1.0 = ask (max premium)
+                fill_pct = getattr(candidate.rule, 'bid_ask_fill_pct', 0.5)
+                if fill_pct is None:
+                    fill_pct = 0.5
+                if c.bid > 0 and c.ask > 0:
+                    raw_price = c.bid + (c.ask - c.bid) * fill_pct
+                else:
+                    raw_price = c.mid
+                limit_price = round(max(raw_price, 0.01), 2)
+
                 entry_order = await self._place_with_retry(
                     option_symbol=c.symbol,
                     quantity=candidate.contracts,
-                    limit_price=round(c.mid, 2),
+                    limit_price=limit_price,
                     rule_id=placed_rule_id,
                 )
 
