@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+import asyncio
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,4 +67,29 @@ async def toggle_rule(rule_id: str, db: AsyncSession = Depends(get_db)):
     rule.enabled = not rule.enabled
     await db.commit()
     await db.refresh(rule)
+    return rule
+
+
+@router.post("/{rule_id}/retry", response_model=SellPutRuleResponse)
+async def retry_rule(rule_id: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    """Clear last_error and immediately trigger a scan for this rule."""
+    rule = await db.get(SellPutRule, rule_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    if not rule.enabled:
+        raise HTTPException(status_code=400, detail="Rule is disabled — enable it first")
+
+    # Clear the error so the UI updates immediately
+    rule.last_error = None
+    rule.last_error_at = None
+    await db.commit()
+    await db.refresh(rule)
+
+    # Run a scan for this rule in the background so the HTTP response returns fast
+    async def _run():
+        from app.services.scan_service import scan_service
+        await scan_service.run_scan(rule_id=rule_id)
+
+    background_tasks.add_task(asyncio.ensure_future, _run())
+
     return rule

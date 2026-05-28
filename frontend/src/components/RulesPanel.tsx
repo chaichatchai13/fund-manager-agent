@@ -44,6 +44,18 @@ export function RulesPanel() {
     fetchRules()
   }
 
+  const retryRule = async (rule: SellPutRule) => {
+    if (!rule.enabled) {
+      alert('Rule is paused — enable it first, then retry.')
+      return
+    }
+    // Clear error optimistically so the banner disappears immediately
+    setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, last_error: null, last_error_at: null } : r))
+    await fetch(`/api/rules/${rule.id}/retry`, { method: 'POST' })
+    // Refresh after a short delay so any new error from the scan is reflected
+    setTimeout(fetchRules, 5000)
+  }
+
   return (
     <div style={CARD}>
       {/* Header */}
@@ -83,6 +95,7 @@ export function RulesPanel() {
               onToggle={() => toggleRule(rule)}
               onEdit={() => setEditingRule(rule)}
               onDelete={() => deleteRule(rule.id)}
+              onRetry={() => retryRule(rule)}
             />
           ))}
         </div>
@@ -116,12 +129,14 @@ function RuleRow({
   onToggle,
   onEdit,
   onDelete,
+  onRetry,
 }: {
   rule: SellPutRule
   isLast: boolean
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
+  onRetry: () => void
 }) {
   const isCoveredCall = rule.strategy_type === 'SELL_COVERED_CALL'
 
@@ -194,24 +209,47 @@ function RuleRow({
           {rule.last_error && (
             <div style={{
               marginTop: 8,
-              padding: '6px 10px',
+              padding: '8px 10px',
               background: '#2d1b1b',
               border: '1px solid #6e3030',
               borderRadius: 6,
               display: 'flex',
               alignItems: 'flex-start',
-              gap: 6,
+              justifyContent: 'space-between',
+              gap: 8,
             }}>
-              <span style={{ color: '#f85149', fontSize: 13, flexShrink: 0 }}>⚠️</span>
-              <div>
-                <span style={{ color: '#f85149', fontSize: 11, fontWeight: 600 }}>Order failed: </span>
-                <span style={{ color: '#ffa198', fontSize: 11 }}>{rule.last_error}</span>
-                {rule.last_error_at && (
-                  <span style={{ color: '#484f58', fontSize: 10, marginLeft: 8 }}>
-                    {new Date(rule.last_error_at).toLocaleString()}
-                  </span>
-                )}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <span style={{ color: '#f85149', fontSize: 13, flexShrink: 0 }}>⚠️</span>
+                <div>
+                  <span style={{ color: '#f85149', fontSize: 11, fontWeight: 600 }}>Order failed: </span>
+                  <span style={{ color: '#ffa198', fontSize: 11 }}>{rule.last_error}</span>
+                  {rule.last_error_at && (
+                    <span style={{ color: '#484f58', fontSize: 10, marginLeft: 8 }}>
+                      {new Date(rule.last_error_at).toLocaleString()}
+                    </span>
+                  )}
+                </div>
               </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); onRetry() }}
+                style={{
+                  flexShrink: 0,
+                  padding: '3px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: '#1f6feb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 5,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#388bfd')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#1f6feb')}
+              >
+                ↻ Retry Now
+              </button>
             </div>
           )}
 
