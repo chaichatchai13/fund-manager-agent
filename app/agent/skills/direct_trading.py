@@ -26,6 +26,34 @@ TOOL_DEFINITIONS = [
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
+        "name": "list_live_orders",
+        "description": (
+            "Fetch all open/working orders directly from Schwab in real time. "
+            "Use this whenever the user asks about pending or open orders — it includes orders placed "
+            "outside ThetaFlow (via thinkorswim, Schwab app, or Swagger). "
+            "Always call this before attempting to cancel an order."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "cancel_live_order",
+        "description": (
+            "Cancel an open order on Schwab by its Schwab order ID. "
+            "Always call list_live_orders first to confirm the order exists and get the correct order ID. "
+            "Always confirm with the user before cancelling."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": {
+                    "type": "string",
+                    "description": "The Schwab order ID (numeric string) from list_live_orders",
+                },
+            },
+            "required": ["order_id"],
+        },
+    },
+    {
         "name": "buy_shares",
         "description": "Buy shares of a stock at market or limit price. Always confirm with user before calling.",
         "input_schema": {
@@ -191,6 +219,52 @@ async def handle_tool_call(name: str, tool_input: dict[str, Any]) -> Any:
         import schwab as schwab_lib
         import schwab.orders.common as common
         from app.schwab.client import schwab_client
+
+        # ── Live order tools ───────────────────────────────────────────────────
+        if name == "list_live_orders":
+            try:
+                from app.config import settings
+                if settings.mock_schwab:
+                    return {"orders": [], "note": "Mock mode — no live orders"}
+                orders = await schwab_client.get_live_orders()
+                active_statuses = {"WORKING", "QUEUED", "PENDING_ACTIVATION",
+                                   "AWAITING_PARENT_ORDER", "AWAITING_CONDITION",
+                                   "AWAITING_MANUAL_REVIEW", "ACCEPTED"}
+                active = [o for o in orders if o.get("status") in active_statuses]
+                # Summarise each order for readability
+                summary = []
+                for o in active:
+                    legs = o.get("orderLegCollection", [])
+                    symbol = legs[0]["instrument"]["symbol"] if legs else "?"
+                    instruction = legs[0].get("instruction", "?") if legs else "?"
+                    summary.append({
+                        "order_id": str(o.get("orderId", "")),
+                        "symbol": symbol,
+                        "instruction": instruction,
+                        "order_type": o.get("orderType"),
+                        "quantity": o.get("quantity"),
+                        "price": o.get("price"),
+                        "duration": o.get("duration"),
+                        "status": o.get("status"),
+                        "entered_time": o.get("enteredTime"),
+                    })
+                return {"open_orders": summary, "count": len(summary)}
+            except Exception as exc:
+                return {"error": str(exc)}
+
+        if name == "cancel_live_order":
+            order_id = str(tool_input.get("order_id", ""))
+            if not order_id:
+                return {"error": "order_id is required"}
+            try:
+                success = await schwab_client.cancel_order(order_id)
+                if success:
+                    logger.info("Order cancelled via agent", order_id=order_id)
+                    return {"success": True, "order_id": order_id, "message": f"Order {order_id} cancelled successfully."}
+                else:
+                    return {"success": False, "order_id": order_id, "error": "Schwab returned an error — order may already be filled or cancelled."}
+            except Exception as exc:
+                return {"error": str(exc)}
 
         # ── Account diagnostic tool ────────────────────────────────────────────
         if name == "list_schwab_accounts":

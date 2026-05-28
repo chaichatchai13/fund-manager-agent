@@ -124,12 +124,43 @@ export function ChatPane({ prefillMessage, onPrefillConsumed, positions = [], ac
   const [apiMessages, setApiMessages] = useState<object[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Fetch pending orders once on mount
+  // Fetch live orders: merges ThetaFlow DB orders + live Schwab orders (catches orders placed outside the app)
+  const fetchLiveOrders = async () => {
+    try {
+      const [dbRes, liveRes] = await Promise.all([
+        fetch('/api/orders?limit=50'),
+        fetch('/api/orders/live'),
+      ])
+      const dbOrders: PendingOrder[] = dbRes.ok ? await dbRes.json() : []
+      const liveOrders: any[] = liveRes.ok ? await liveRes.json() : []
+
+      // Add live Schwab orders that aren't already tracked in the DB
+      const dbSchwabIds = new Set(dbOrders.map(o => String((o as any).schwab_order_id)))
+      const liveExtras: PendingOrder[] = liveOrders
+        .filter(o => !dbSchwabIds.has(String(o.orderId)))
+        .map(o => {
+          const leg = o.orderLegCollection?.[0]
+          return {
+            id: String(o.orderId),
+            symbol: leg?.instrument?.symbol ?? '?',
+            order_type: o.orderType ?? 'LIMIT',
+            quantity: o.quantity ?? 0,
+            limit_price: o.price ?? null,
+            status: o.status ?? 'WORKING',
+            is_gtc: (o.duration ?? '').includes('CANCEL'),
+          }
+        })
+      setPendingOrders([...dbOrders, ...liveExtras])
+    } catch {
+      // non-fatal
+    }
+  }
+
+  // Fetch on mount and refresh every 60 seconds so orders stay current
   useEffect(() => {
-    fetch('/api/orders?limit=50')
-      .then(r => r.ok ? r.json() : [])
-      .then(setPendingOrders)
-      .catch(() => {})
+    fetchLiveOrders()
+    const interval = setInterval(fetchLiveOrders, 60_000)
+    return () => clearInterval(interval)
   }, [])
 
   // Re-inject portfolio context whenever positions, orders, or account change

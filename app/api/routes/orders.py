@@ -18,6 +18,26 @@ async def list_orders(status: str | None = None, limit: int = 50, db: AsyncSessi
     return result.scalars().all()
 
 
+@router.get("/live")
+async def list_live_orders():
+    """
+    Fetch all open orders directly from Schwab — includes orders placed
+    outside ThetaFlow (via Schwab app, thinkorswim, Swagger, etc.).
+    """
+    from app.schwab.client import schwab_client
+    if not schwab_client.is_connected:
+        return []
+    try:
+        orders = await schwab_client.get_live_orders()
+        # Return only working/queued orders for the UI
+        active_statuses = {"WORKING", "QUEUED", "PENDING_ACTIVATION",
+                           "AWAITING_PARENT_ORDER", "AWAITING_CONDITION",
+                           "AWAITING_MANUAL_REVIEW", "ACCEPTED"}
+        return [o for o in orders if o.get("status") in active_statuses]
+    except Exception:
+        return []
+
+
 @router.get("/{order_id}", response_model=OrderResponse)
 async def get_order(order_id: str, db: AsyncSession = Depends(get_db)):
     from fastapi import HTTPException

@@ -240,6 +240,27 @@ class SchwabClient:
         )
         return response.status_code in (200, 204)
 
+    async def get_live_orders(self, max_results: int = 50) -> list[dict[str, Any]]:
+        """Fetch all working/pending orders directly from Schwab (not the local DB)."""
+        if settings.mock_schwab:
+            return []
+
+        from datetime import datetime, timedelta, timezone
+        await self._rate_limiter.acquire()
+        # Schwab requires a date range; 60 days covers any GTC orders
+        from_dt = datetime.now(timezone.utc) - timedelta(days=60)
+        response = await asyncio.to_thread(
+            self._client.get_orders_for_account,
+            self.account_hash,
+            from_entered_datetime=from_dt,
+            to_entered_datetime=datetime.now(timezone.utc),
+            max_results=max_results,
+        )
+        orders = response.json()
+        if not isinstance(orders, list):
+            return []
+        return orders
+
     async def get_account(self) -> dict[str, Any]:
         """Get account balances and positions."""
         if settings.mock_schwab:
