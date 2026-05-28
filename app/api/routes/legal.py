@@ -85,55 +85,102 @@ async def privacy_policy():
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy — ThetaFlow</title>
-  <style>{_BASE_STYLE}</style>
+  <style>{_BASE_STYLE}
+    .highlight {{ background:#f6f8fa; border-left:4px solid #0969da; padding:12px 16px;
+                  border-radius:0 6px 6px 0; margin:16px 0; }}
+  </style>
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p><strong>Last updated: May 2026</strong></p>
+  <p><strong>Effective date: May 21, 2026 &nbsp;|&nbsp; Last updated: May 27, 2026</strong></p>
 
-  <p>ThetaFlow is a private, single-user automated options trading application. This policy explains
-  how personal data is handled within the system.</p>
+  <p>ThetaFlow ("we", "our", "the application") is a private, single-user automated options
+  trading application operated by Chatchai Satienpattanakul. This Privacy Policy explains how
+  personal information is collected, used, and protected.</p>
 
-  <h2>1. Data We Collect</h2>
+  <h2>1. Information We Collect</h2>
   <ul>
-    <li><strong>Phone number</strong> — provided by the application owner in the system configuration.
-        Used solely to deliver trading alerts and receive reply confirmations via SMS.</li>
-    <li><strong>Trading account data</strong> — fetched from the Charles Schwab brokerage API on behalf
-        of the account owner. Stored locally in the application database.</li>
-    <li><strong>Push notification subscription tokens</strong> — stored locally to deliver browser push
-        notifications to the owner's devices.</li>
+    <li><strong>Phone number</strong> — provided voluntarily by the application owner to receive
+        SMS trading alerts. Used solely to deliver alerts and receive reply confirmations.</li>
+    <li><strong>Brokerage account data</strong> — fetched from the Charles Schwab API on behalf
+        of the account owner. Stored locally in the application database on a private server.</li>
+    <li><strong>Push notification tokens</strong> — stored locally to deliver browser push
+        notifications to the owner's registered devices.</li>
   </ul>
 
-  <h2>2. How We Use Data</h2>
+  <h2>2. SMS / Text Messaging Program</h2>
+  <p>ThetaFlow operates an SMS alert program that sends automated trading notifications to the
+  registered phone number. By opting in, you consent to receive text messages including:</p>
   <ul>
-    <li>To send SMS alerts about portfolio positions, price movements, and trade opportunities.</li>
-    <li>To receive and process reply confirmations (YES/NO) for automated trade actions.</li>
-    <li>To display account performance and position data in the dashboard.</li>
+    <li>Portfolio position updates and profit/loss notifications</li>
+    <li>Stock price movement alerts based on configured thresholds</li>
+    <li>Trade confirmation requests requiring a YES or NO reply</li>
+    <li>Morning digest and market open summaries</li>
+  </ul>
+  <p><strong>Message frequency:</strong> Varies based on market activity; typically 1–10 messages
+  per trading day.</p>
+  <p><strong>Message &amp; data rates may apply</strong> depending on your mobile carrier plan.</p>
+  <p><strong>To opt out:</strong> Reply <strong>STOP</strong> to any message at any time.
+  You will receive one confirmation message and no further messages will be sent.</p>
+  <p><strong>For help:</strong> Reply <strong>HELP</strong> to any message or email
+  <a href="mailto:chaisatien13@gmail.com">chaisatien13@gmail.com</a>.</p>
+
+  <h2>3. How We Use Your Information</h2>
+  <ul>
+    <li>To deliver SMS trading alerts to the registered phone number.</li>
+    <li>To process inbound SMS replies (YES/NO confirmations) and execute requested actions.</li>
+    <li>To display portfolio performance and position data in the private dashboard.</li>
+    <li>To operate automated trading rules on behalf of the account owner.</li>
   </ul>
 
-  <h2>3. Data Sharing</h2>
-  <p>No personal data is shared with third parties for marketing or any other purposes.
-  The only external services used are:</p>
+  <h2>4. Data Sharing and Disclosure</h2>
+  <div class="highlight">
+    <strong>No mobile information (including phone numbers and SMS opt-in data) will be shared
+    with third parties or affiliates for marketing or promotional purposes.</strong>
+    Text messaging originator opt-in data and consent will not be shared with any third party
+    under any circumstances.
+  </div>
+  <p>The only external services that receive any data are:</p>
   <ul>
-    <li><strong>Twilio</strong> — for SMS delivery only.</li>
-    <li><strong>Anthropic</strong> — for AI agent responses (no PII is sent).</li>
-    <li><strong>Charles Schwab API</strong> — for brokerage account access.</li>
+    <li><strong>Twilio Inc.</strong> — receives the destination phone number and message body
+        solely to deliver SMS messages. Twilio does not receive any financial or account data.
+        See <a href="https://www.twilio.com/legal/privacy" target="_blank">Twilio's Privacy Policy</a>.</li>
+    <li><strong>Anthropic PBC</strong> — receives anonymised conversation text for AI agent
+        responses. No personally identifiable information or financial account numbers are sent.</li>
+    <li><strong>Charles Schwab &amp; Co.</strong> — brokerage API used to read account data and
+        place orders on behalf of the account owner only.</li>
   </ul>
+  <p>No data is sold, rented, or shared with any other third parties for any purpose.</p>
 
-  <h2>4. Data Retention</h2>
-  <p>All data is stored in a private database controlled solely by the application owner.
-  Data is retained as long as the application is running and can be deleted at any time
-  by the owner.</p>
+  <h2>5. Data Storage and Security</h2>
+  <p>All personal and financial data is stored in a private, password-protected database on a
+  dedicated server controlled solely by the application owner. The server is hosted on Google
+  Cloud Platform and protected by HTTPS (TLS 1.2+). No data is stored on third-party databases
+  or cloud storage services.</p>
 
-  <h2>5. Your Rights</h2>
-  <p>As the sole user of this application, you have full control over all data.
-  You may opt out of SMS notifications at any time by replying <strong>STOP</strong> to any message
-  or by removing your phone number from the application configuration.</p>
+  <h2>6. Data Retention</h2>
+  <p>Data is retained as long as the application is actively used. The application owner may
+  delete all stored data at any time. SMS opt-in consent records are retained for a minimum
+  of 4 years as required by applicable regulations.</p>
 
-  <h2>6. Contact</h2>
-  <p>For questions about this policy, contact the application owner directly.</p>
+  <h2>7. Your Rights and Choices</h2>
+  <p>As the sole user of this application, you have full control over all stored data, including
+  the right to access, correct, or delete it. You may opt out of SMS notifications at any time
+  by replying STOP or by removing your phone number from the application configuration.</p>
 
-  <footer>ThetaFlow — Private automated trading system</footer>
+  <h2>8. Changes to This Policy</h2>
+  <p>We may update this Privacy Policy from time to time. The "Last updated" date at the top of
+  this page will reflect any changes. Continued use of the SMS program following an update
+  constitutes acceptance of the revised policy.</p>
+
+  <h2>9. Contact</h2>
+  <p>For questions or concerns about this Privacy Policy or your data, contact:</p>
+  <p><strong>Chatchai Satienpattanakul</strong><br>
+  Email: <a href="mailto:chaisatien13@gmail.com">chaisatien13@gmail.com</a><br>
+  Website: <a href="https://theta-flows.com">theta-flows.com</a></p>
+
+  <footer>ThetaFlow &mdash; Private automated trading system &mdash;
+  &copy; 2026 Chatchai Satienpattanakul</footer>
 </body>
 </html>""")
 
