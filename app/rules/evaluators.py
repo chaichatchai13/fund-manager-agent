@@ -84,11 +84,17 @@ def score_candidate(candidate: OptionCandidate, strategy_type: str = "SELL_PUT")
     """
     Score a candidate for selection (higher = better).
 
-    SELL_PUT: prefer highest strike (closest to ATM) that meets premium filter.
-              Tiebreak by highest mid premium.
-    SELL_COVERED_CALL: prefer lowest strike above ATM (closest OTM call = most premium).
-                       Tiebreak by highest mid premium.
+    SELL_PUT: prefer the LOWEST strike (farthest OTM / most protection) that still
+              meets the min-premium filter.  Among ties, prefer higher premium.
+              Rationale: go as far from the stock price as possible while still
+              collecting the required premium.
+
+    SELL_COVERED_CALL: prefer the HIGHEST strike (farthest OTM / least assignment risk)
+                       that still meets the min-premium filter.  Among ties, prefer
+                       higher premium.
     """
     if strategy_type == "SELL_COVERED_CALL":
-        return (-candidate.strike) * 1000 + candidate.mid
-    return candidate.strike * 1000 + candidate.mid
+        # Higher strike = more OTM = better for covered calls
+        return candidate.strike * 1000 + candidate.mid
+    # Lower strike = more OTM = better for sell puts
+    return (-candidate.strike) * 1000 + candidate.mid

@@ -179,23 +179,34 @@ class SchwabClient:
         min_dte: int = 20,
         max_dte: int = 60,
         contract_type: str = "PUT",
+        strike_count: int = 60,
     ) -> dict[str, Any]:
-        """Fetch option chain for a symbol."""
+        """
+        Fetch option chain for a symbol.
+
+        strike_count: number of strikes above/below ATM to return.
+        Default 60 ensures far-OTM candidates are included so the engine
+        can pick the lowest-strike put (or highest-strike call) that still
+        meets the premium filter.
+        """
         if settings.mock_schwab:
             return _mock_option_chain(symbol, min_dte, max_dte, contract_type)
 
         import schwab
+        from datetime import timedelta
         await self._rate_limiter.acquire()
         if contract_type == "CALL":
             schwab_contract_type = schwab.client.Client.Options.ContractType.CALL
         else:
             schwab_contract_type = schwab.client.Client.Options.ContractType.PUT
+        to_date = date.today() + timedelta(days=max_dte + 7)
         response = await asyncio.to_thread(
             self._client.get_option_chain,
             symbol=symbol,
             contract_type=schwab_contract_type,
+            strike_count=strike_count,
             from_date=date.today(),
-            to_date=None,
+            to_date=to_date,
             strike_range=schwab.client.Client.Options.StrikeRange.OUT_OF_THE_MONEY,
         )
         return response.json()
