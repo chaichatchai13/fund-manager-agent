@@ -345,17 +345,31 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
   const closedRows = applyFilters(closedPositions)
   const orderRows = applyOrderFilters(pendingOrders)
 
-  const profitPct = (p: OptionPosition) => {
-    if (p.unrealized_pnl == null || p.total_credit <= 0) return null
-    return (p.unrealized_pnl / p.total_credit) * 100
-  }
   const barColor = (pct: number | null) => pct == null || pct < 0 ? RED : pct >= 60 ? GREEN : YELLOW
 
+  // For OPEN/CLOSING: use unrealized_pnl from Schwab stream.
+  // For CLOSED/EXPIRED/ASSIGNED: compute realized P&L from entry vs closing price.
+  const computePnl = (p: OptionPosition): number | null => {
+    const isClosed = ['CLOSED', 'EXPIRED', 'ASSIGNED'].includes(p.status)
+    if (isClosed) {
+      if (p.current_price == null) return null
+      // Sold option: realized = (entry - close) * contracts * 100
+      return (p.premium_received - p.current_price) * p.contracts * 100
+    }
+    return p.unrealized_pnl
+  }
+
+  const computePct = (p: OptionPosition, pnl: number | null): number | null => {
+    if (pnl == null || p.total_credit <= 0) return null
+    return (pnl / p.total_credit) * 100
+  }
+
   // ── Desktop table row ──────────────────────────────────────────────────────
-  const renderPositionRow = (p: OptionPosition, showActions: boolean) => {
-    const pct = profitPct(p)
+  const renderPositionRow = (p: OptionPosition, showActions: boolean, isHistory = false) => {
+    const pnl = computePnl(p)
+    const pct = computePct(p, pnl)
     const barW = pct == null ? 0 : Math.min(100, Math.max(0, (pct / 75) * 100))
-    const pnlPositive = (p.unrealized_pnl ?? 0) >= 0
+    const pnlPositive = (pnl ?? 0) >= 0
     return (
       <tr key={p.id}
         onMouseEnter={e => (e.currentTarget.style.background = ROW_HOVER)}
@@ -376,11 +390,12 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
           {p.current_price != null ? `$${fmt(p.current_price)}` : '—'}
         </td>
         <td style={{ ...TD, textAlign: 'right', color: pnlPositive ? GREEN : RED, fontWeight: 600 }}>
-          {p.unrealized_pnl != null ? `${pnlPositive ? '+' : '-'}$${fmt(p.unrealized_pnl)}` : '—'}
+          {pnl != null ? `${pnlPositive ? '+' : '-'}$${fmt(Math.abs(pnl))}` : '—'}
         </td>
         <td style={{ ...TD, textAlign: 'right', color: pnlPositive ? GREEN : RED, fontWeight: 600 }}>
           {pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : '—'}
         </td>
+        {!isHistory && (
         <td style={{ ...TD, minWidth: 110 }}>
           <div style={{ background: '#21262d', borderRadius: 4, height: 6, width: 90 }}>
             <div style={{ background: barColor(pct), width: `${barW}%`, height: 6, borderRadius: 4, transition: 'width 0.4s' }} />
@@ -389,6 +404,7 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
             {pct != null ? `${pct.toFixed(0)}% → 75%` : '—'}
           </div>
         </td>
+        )}
         <td style={TD}>
           <div style={{ color: MUTED, fontSize: 11 }}>{relDate(p.opened_at)}</div>
           {p.closed_at && <div style={{ color: MUTED, fontSize: 11 }}>{relDate(p.closed_at)}</div>}
@@ -421,7 +437,7 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
   }
 
   // ── Position section (desktop = table, mobile = cards) ─────────────────────
-  const renderPositionsSection = (rows: OptionPosition[], showActions: boolean, emptyMsg: string, loading = false) => {
+  const renderPositionsSection = (rows: OptionPosition[], showActions: boolean, emptyMsg: string, loading = false, isHistory = false) => {
     if (loading) return <div style={{ padding: '32px 16px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>Loading…</div>
     if (rows.length === 0) return <div style={{ padding: '32px 16px', textAlign: 'center', color: '#484f58', fontSize: 13 }}>{emptyMsg}</div>
 
@@ -454,14 +470,14 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
               <th style={{ ...TH, textAlign: 'right' }}>Current</th>
               <th style={{ ...TH, textAlign: 'right' }}>P&L $</th>
               <th style={{ ...TH, textAlign: 'right' }}>P&L %</th>
-              <th style={TH}>Progress</th>
+              {!isHistory && <th style={TH}>Progress</th>}
               <th style={TH}>Date</th>
               <th style={TH}>Status</th>
               {showActions && <th style={TH}></th>}
             </tr>
           </thead>
           <tbody>
-            {rows.map(p => renderPositionRow(p, showActions))}
+            {rows.map(p => renderPositionRow(p, showActions, isHistory))}
           </tbody>
         </table>
       </div>
@@ -572,7 +588,7 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
       {tab === 'active'  && renderPositionsSection(activeRows,  true,  'No active positions')}
       {tab === 'closing' && renderPositionsSection(closingRows, true,  'No closing positions')}
       {tab === 'pending' && renderOrdersSection()}
-      {tab === 'closed'  && renderPositionsSection(closedRows,  false, 'No closed positions', closedLoading)}
+      {tab === 'closed'  && renderPositionsSection(closedRows,  false, 'No closed positions', closedLoading, true)}
     </div>
   )
 }
