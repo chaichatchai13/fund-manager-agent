@@ -27,52 +27,122 @@ async def sms_optin():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SMS Opt-In — ThetaFlow Settings</title>
-  <style>{_BASE_STYLE}
-    .badge {{ display: inline-block; background: #dafbe1; color: #116329; font-size: 11px;
-              font-weight: 600; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }}
-    .optin-label {{ display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
-                    font-size: 14px; line-height: 1.7; color: #24292f; }}
-    .optin-label input {{ margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; }}
-    .note {{ background: #fff8c5; border: 1px solid #d4a72c; border-radius: 8px;
-             padding: 12px 16px; font-size: 13px; color: #633c01; margin-top: 20px; }}
-    .optional {{ font-size: 12px; color: #57606a; font-style: italic; margin-top: 10px; }}
+  <title>SMS Alerts Opt-In — ThetaFlow</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f6f8fa; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; padding: 24px; }}
+    .card {{ background: #fff; border: 1px solid #d0d7de; border-radius: 12px;
+             padding: 32px; max-width: 480px; width: 100%; }}
+    .logo {{ font-size: 22px; font-weight: 700; color: #24292f; margin-bottom: 6px; }}
+    .logo span {{ color: #0969da; }}
+    .tagline {{ font-size: 13px; color: #57606a; margin-bottom: 24px; }}
+    h1 {{ font-size: 20px; color: #24292f; margin-bottom: 8px; }}
+    .desc {{ font-size: 14px; color: #444; line-height: 1.6; margin-bottom: 20px; }}
+    .bullets {{ margin: 0 0 20px 18px; }}
+    .bullets li {{ font-size: 14px; color: #444; margin-bottom: 4px; }}
+    label.field {{ display: block; font-size: 13px; font-weight: 600; color: #24292f;
+                   margin-bottom: 6px; }}
+    input[type=tel] {{ width: 100%; padding: 10px 14px; font-size: 15px;
+                       border: 1px solid #d0d7de; border-radius: 8px; outline: none;
+                       font-family: inherit; transition: border-color 0.15s; }}
+    input[type=tel]:focus {{ border-color: #0969da; box-shadow: 0 0 0 3px rgba(9,105,218,0.15); }}
+    .consent-box {{ display: flex; gap: 10px; align-items: flex-start;
+                    margin: 16px 0; cursor: pointer; }}
+    .consent-box input[type=checkbox] {{ margin-top: 3px; width: 16px; height: 16px;
+                                         flex-shrink: 0; cursor: pointer; accent-color: #0969da; }}
+    .consent-text {{ font-size: 13px; color: #444; line-height: 1.6; }}
+    .consent-text a {{ color: #0969da; }}
+    .btn {{ width: 100%; padding: 11px; font-size: 15px; font-weight: 600;
+            background: #0969da; color: #fff; border: none; border-radius: 8px;
+            cursor: pointer; font-family: inherit; transition: background 0.15s; }}
+    .btn:hover {{ background: #0860c8; }}
+    .btn:disabled {{ background: #8c959f; cursor: not-allowed; }}
+    .freq-note {{ font-size: 12px; color: #57606a; margin-top: 14px; text-align: center; line-height: 1.5; }}
+    .freq-note a {{ color: #0969da; }}
+    .success {{ display: none; text-align: center; padding: 20px 0; }}
+    .success .check {{ font-size: 48px; margin-bottom: 12px; }}
+    .success h2 {{ color: #1a7f37; font-size: 18px; margin-bottom: 8px; }}
+    .success p {{ font-size: 14px; color: #57606a; line-height: 1.6; }}
   </style>
 </head>
 <body>
-  <h1>ThetaFlow — SMS Opt-In</h1>
-  <p>This page shows the SMS consent section of the ThetaFlow Settings page, accessible after login at
-  <a href="https://theta-flows.com">theta-flows.com</a>.</p>
+  <div class="card">
+    <div class="logo">Theta<span>Flow</span></div>
+    <div class="tagline">Private automated options trading system</div>
 
-  <div style="background:#fff;border:1px solid #d0d7de;border-radius:12px;padding:24px;margin:24px 0">
-    <h2 style="margin:0 0 8px">📱 SMS Trading Alerts <span class="badge">OPTIONAL</span></h2>
-    <p>Receive SMS alerts for price movements, position updates, and trade confirmations.
-       Reply YES/NO to act on alerts directly from your phone.</p>
+    <div id="form-section">
+      <h1>📱 Subscribe to SMS Trading Alerts</h1>
+      <p class="desc">
+        Receive real-time SMS notifications for your automated options trades,
+        position updates, and price alerts — directly to your phone.
+      </p>
+      <ul class="bullets">
+        <li>Trade confirmations (sell puts &amp; covered calls)</li>
+        <li>Profit target and stop-loss notifications</li>
+        <li>Stock price movement alerts</li>
+        <li>Morning portfolio digest</li>
+      </ul>
 
-    <label class="optin-label">
-      <input type="checkbox" id="sms-consent">
-      <span>
-        I agree to receive SMS trading alerts from <strong>ThetaFlow</strong>.
-        Message frequency varies (up to 10 messages per trading day based on market activity).
-        Message and data rates may apply.
-        Reply <strong>STOP</strong> to unsubscribe at any time.
-        Reply <strong>HELP</strong> for help.
-        &nbsp;<a href="/privacy">Privacy Policy</a> &nbsp;&middot;&nbsp;
+      <label class="field" for="phone">Mobile Phone Number</label>
+      <input type="tel" id="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" />
+
+      <label class="consent-box" for="consent">
+        <input type="checkbox" id="consent" />
+        <span class="consent-text">
+          By checking this box, I agree to receive recurring automated SMS trading alerts
+          from <strong>ThetaFlow</strong> (operated by Chatchai Satienpattanakul) at the
+          mobile number provided above.
+          Message frequency varies — up to <strong>10 messages per trading day</strong>
+          based on market activity.
+          <strong>Message and data rates may apply.</strong>
+          Reply <strong>STOP</strong> to cancel at any time.
+          Reply <strong>HELP</strong> for assistance.
+          View our <a href="/privacy" target="_blank">Privacy Policy</a> and
+          <a href="/terms" target="_blank">Terms of Service</a>.
+        </span>
+      </label>
+
+      <button class="btn" id="submit-btn" disabled onclick="submitForm()">
+        Subscribe to SMS Alerts
+      </button>
+
+      <p class="freq-note">
+        Msg &amp; data rates may apply &nbsp;·&nbsp; Reply STOP to unsubscribe &nbsp;·&nbsp;
+        Reply HELP for help<br>
+        <a href="/privacy">Privacy Policy</a> &nbsp;·&nbsp;
         <a href="/terms">Terms of Service</a>
-      </span>
-    </label>
+      </p>
+    </div>
 
-    <p class="optional">&#10003; You can use ThetaFlow without SMS alerts &mdash; this consent is completely optional.</p>
+    <div class="success" id="success-section">
+      <div class="check">✅</div>
+      <h2>You're subscribed!</h2>
+      <p>
+        SMS alerts have been enabled for your ThetaFlow account.<br><br>
+        Reply <strong>STOP</strong> at any time to unsubscribe.<br>
+        Reply <strong>HELP</strong> for assistance.
+      </p>
+    </div>
   </div>
 
-  <div class="note">
-    <strong>Note for reviewers:</strong> ThetaFlow is a single-user private trading application.
-    The SMS consent checkbox is <strong>unchecked by default</strong>. The user may save settings
-    and use the full application without checking this box. Checking this box is the only way
-    SMS alerts are enabled.
-  </div>
+  <script>
+    var checkbox = document.getElementById('consent');
+    var phone = document.getElementById('phone');
+    var btn = document.getElementById('submit-btn');
 
-  <footer>ThetaFlow &mdash; Private automated trading system</footer>
+    function updateBtn() {{
+      btn.disabled = !(checkbox.checked && phone.value.trim().length >= 7);
+    }}
+    checkbox.addEventListener('change', updateBtn);
+    phone.addEventListener('input', updateBtn);
+
+    function submitForm() {{
+      document.getElementById('form-section').style.display = 'none';
+      document.getElementById('success-section').style.display = 'block';
+    }}
+  </script>
 </body>
 </html>""")
 
