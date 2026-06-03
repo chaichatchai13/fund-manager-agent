@@ -473,7 +473,7 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
               <th style={TH}>Strike / Exp</th>
               <th style={{ ...TH, textAlign: 'right' }}>Contracts</th>
               <th style={{ ...TH, textAlign: 'right' }}>Entry</th>
-              <th style={{ ...TH, textAlign: 'right' }}>Current</th>
+              <th style={{ ...TH, textAlign: 'right' }}>{isHistory ? 'Close' : 'Current'}</th>
               <th style={{ ...TH, textAlign: 'right' }}>P&L $</th>
               <th style={{ ...TH, textAlign: 'right' }}>P&L %</th>
               {!isHistory && <th style={TH}>Progress</th>}
