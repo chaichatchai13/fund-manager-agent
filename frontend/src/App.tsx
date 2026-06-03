@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { OptionPosition } from './types'
 import { ChatPane } from './components/ChatPane'
 import { LoginPage } from './components/LoginPage'
+import { LandingPage } from './components/LandingPage'
 import { PnlChart } from './components/PnlChart'
 import { PositionsTable } from './components/PositionsTable'
 import { RulesPanel } from './components/RulesPanel'
@@ -39,8 +40,13 @@ function useIsMobile() {
 
 export default function App() {
   const { authenticated, loading: authLoading, recheck, logout } = useAuth()
+  const [showLogin, setShowLogin] = useState(false)
+
   if (authLoading) return null
-  if (!authenticated) return <LoginPage onLogin={recheck} />
+  if (!authenticated) {
+    if (showLogin) return <LoginPage onLogin={recheck} />
+    return <LandingPage onSignIn={() => setShowLogin(true)} />
+  }
   return <Dashboard logout={logout} />
 }
 
