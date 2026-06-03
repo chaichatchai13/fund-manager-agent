@@ -406,8 +406,14 @@ export function PositionsTable({ positions, connected, onClosePosition, onDelete
         </td>
         )}
         <td style={TD}>
-          <div style={{ color: MUTED, fontSize: 11 }}>{relDate(p.opened_at)}</div>
-          {p.closed_at && <div style={{ color: MUTED, fontSize: 11 }}>{relDate(p.closed_at)}</div>}
+          {isHistory && p.closed_at ? (
+            <>
+              <div style={{ color: MUTED, fontSize: 11 }}>{relDate(p.closed_at)}</div>
+              <div style={{ color: '#484f58', fontSize: 10, marginTop: 1 }}>opened {relDate(p.opened_at)}</div>
+            </>
+          ) : (
+            <div style={{ color: MUTED, fontSize: 11 }}>{relDate(p.opened_at)}</div>
+          )}
         </td>
         <td style={TD}><StatusBadge status={p.status} /></td>
         {showActions && (
