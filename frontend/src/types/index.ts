@@ -50,6 +50,8 @@ export interface SellPutRule {
   max_iv_pct: number | null
   last_error: string | null
   last_error_at: string | null
+  last_scan_note: string | null
+  last_scanned_at: string | null
 }
 
 export interface DailySnapshot {

@@ -253,6 +253,23 @@ function RuleRow({
             </div>
           )}
 
+          {/* Scan note — shows why the rule did/didn't fire last scan */}
+          {rule.last_scan_note && !rule.last_error && (
+            <div style={{ marginTop: 6, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+              <span style={{ fontSize: 11, flexShrink: 0 }}>
+                {rule.last_scan_note.startsWith('✓') ? '✅' : 'ℹ️'}
+              </span>
+              <span style={{ fontSize: 11, color: rule.last_scan_note.startsWith('✓') ? '#3fb950' : '#8b949e' }}>
+                {rule.last_scan_note}
+              </span>
+              {rule.last_scanned_at && (
+                <span style={{ fontSize: 10, color: '#484f58', flexShrink: 0, marginLeft: 4 }}>
+                  {new Date(rule.last_scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Stats row */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 6 }}>
             <StatChip label="DTE" value={`${rule.min_dte}–${rule.max_dte}`} />

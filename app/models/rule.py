@@ -78,5 +78,9 @@ class SellPutRule(Base):
     last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     last_error_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Last scan diagnostic note — plain-English reason why the rule did/didn't fire
+    last_scan_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    last_scanned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

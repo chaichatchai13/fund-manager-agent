@@ -125,5 +125,7 @@ class SellPutRuleResponse(BaseModel):
     max_iv_pct: float | None
     last_error: str | None
     last_error_at: datetime | None
+    last_scan_note: str | None
+    last_scanned_at: datetime | None
     created_at: datetime
     updated_at: datetime
