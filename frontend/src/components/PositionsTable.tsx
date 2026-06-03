@@ -75,9 +75,12 @@ function PositionCard({
   p: OptionPosition; showActions: boolean
   onClose?: () => void; onDelete?: () => void; onRoll?: () => void
 }) {
-  const pnlPositive = (p.unrealized_pnl ?? 0) >= 0
-  const pct = p.unrealized_pnl != null && p.total_credit > 0
-    ? (p.unrealized_pnl / p.total_credit) * 100 : null
+  const isClosed = ['CLOSED', 'EXPIRED', 'ASSIGNED'].includes(p.status)
+  const pnl = isClosed
+    ? (p.current_price != null ? (p.premium_received - p.current_price) * p.contracts * 100 : null)
+    : p.unrealized_pnl
+  const pct = pnl != null && p.total_credit > 0 ? (pnl / p.total_credit) * 100 : null
+  const pnlPositive = (pnl ?? 0) >= 0
   const barW = pct == null ? 0 : Math.min(100, Math.max(0, (pct / 75) * 100))
   const barColor = pct == null || pct < 0 ? RED : pct >= 60 ? GREEN : YELLOW
 
@@ -103,15 +106,18 @@ function PositionCard({
       <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 13 }}>
         <span style={{ color: MUTED }}>Entry <span style={{ color: '#e6edf3', fontWeight: 600 }}>${fmt(p.premium_received)}</span></span>
         {p.current_price != null && (
-          <span style={{ color: MUTED }}>Now <span style={{ color: '#e6edf3', fontWeight: 600 }}>${fmt(p.current_price)}</span></span>
+          <span style={{ color: MUTED }}>
+            {isClosed ? 'Close' : 'Now'}{' '}
+            <span style={{ color: '#e6edf3', fontWeight: 600 }}>${fmt(p.current_price)}</span>
+          </span>
         )}
       </div>
 
-      {p.unrealized_pnl != null && (
+      {pnl != null && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isClosed ? 0 : 5 }}>
             <span style={{ color: pnlPositive ? GREEN : RED, fontWeight: 700, fontSize: 14 }}>
-              {pnlPositive ? '+' : '-'}${fmt(p.unrealized_pnl)}
+              {pnlPositive ? '+' : '-'}${fmt(Math.abs(pnl))}
             </span>
             {pct != null && (
               <span style={{ color: pnlPositive ? GREEN : RED, fontWeight: 600, fontSize: 13 }}>
@@ -119,17 +125,23 @@ function PositionCard({
               </span>
             )}
           </div>
-          <div style={{ background: '#21262d', borderRadius: 3, height: 5, marginBottom: 3 }}>
-            <div style={{ background: barColor, width: `${barW}%`, height: 5, borderRadius: 3, transition: 'width 0.4s' }} />
-          </div>
-          <div style={{ color: '#484f58', fontSize: 10, marginBottom: 10 }}>
-            {pct != null ? `${pct.toFixed(0)}% toward 75% target` : '—'}
-          </div>
+          {!isClosed && (
+            <>
+              <div style={{ background: '#21262d', borderRadius: 3, height: 5, marginBottom: 3 }}>
+                <div style={{ background: barColor, width: `${barW}%`, height: 5, borderRadius: 3, transition: 'width 0.4s' }} />
+              </div>
+              <div style={{ color: '#484f58', fontSize: 10, marginBottom: 10 }}>
+                {pct != null ? `${pct.toFixed(0)}% toward 75% target` : '—'}
+              </div>
+            </>
+          )}
         </>
       )}
 
-      <div style={{ color: '#484f58', fontSize: 11, marginBottom: showActions ? 10 : 0 }}>
-        Opened {relDate(p.opened_at)}{p.closed_at ? ` · Closed ${relDate(p.closed_at)}` : ''}
+      <div style={{ color: '#484f58', fontSize: 11, marginTop: 10, marginBottom: showActions ? 10 : 0 }}>
+        {isClosed && p.closed_at
+          ? `Closed ${relDate(p.closed_at)} · opened ${relDate(p.opened_at)}`
+          : `Opened ${relDate(p.opened_at)}`}
       </div>
 
       {/* Actions */}
