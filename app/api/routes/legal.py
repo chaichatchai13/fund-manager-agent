@@ -267,7 +267,7 @@ async def terms_of_service():
 </head>
 <body>
   <h1>Terms of Service</h1>
-  <p><strong>Last updated: May 2026</strong></p>
+  <p><strong>Last updated: June 2026</strong></p>
 
   <p>ThetaFlow is a private, single-user automated options trading system operated by and for
   the application owner only. These terms govern use of the SMS notification feature.</p>
@@ -296,14 +296,23 @@ async def terms_of_service():
   <p>Reply <strong>HELP</strong> to any message for assistance, or contact the application
   owner directly.</p>
 
+  <h2>Privacy Policy</h2>
+  <p>Please review our Privacy Policy at
+  <a href="https://theta-flows.com/privacy">https://theta-flows.com/privacy</a>.</p>
+
   <h2>Support Contact</h2>
-  <p>For support or questions, contact the application owner directly.</p>
+  <p>For support or questions, contact the application owner directly at
+  <a href="mailto:chaisatien13@gmail.com">chaisatien13@gmail.com</a>.</p>
 
   <h2>Disclaimer</h2>
   <p>ThetaFlow is a personal tool and does not constitute financial advice. All trading
   decisions are the sole responsibility of the account owner. Past performance does not
   guarantee future results.</p>
 
-  <footer>ThetaFlow — Private automated trading system</footer>
+  <h2>Carriers</h2>
+  <p>Carriers are not liable for any delayed or undelivered messages.</p>
+
+  <footer>ThetaFlow &mdash; Private automated trading system &mdash;
+  &copy; 2026 Chatchai Satienpattanakul</footer>
 </body>
 </html>""")
