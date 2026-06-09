@@ -76,6 +76,48 @@ async def broadcast(message: dict) -> None:
     _connected_clients -= disconnected
 
 
+def _position_to_dict(p: OptionPosition) -> dict:
+    """Serialize a position to a dict matching the OptionPositionResponse schema."""
+    return {
+        "id": p.id,
+        "rule_id": p.rule_id,
+        "underlying_symbol": p.underlying_symbol,
+        "option_symbol": p.option_symbol,
+        "strike": p.strike,
+        "expiration_date": str(p.expiration_date),
+        "dte_at_entry": p.dte_at_entry,
+        "delta_at_entry": p.delta_at_entry,
+        "iv_rank_at_entry": p.iv_rank_at_entry,
+        "stock_price_at_entry": p.stock_price_at_entry,
+        "contracts": p.contracts,
+        "premium_received": p.premium_received,
+        "total_credit": p.total_credit,
+        "current_price": p.current_price,
+        "unrealized_pnl": p.unrealized_pnl,
+        "status": p.status,
+        "entry_order_id": p.entry_order_id,
+        "exit_order_id": p.exit_order_id,
+        "opened_at": p.opened_at.isoformat() if p.opened_at else None,
+        "closed_at": p.closed_at.isoformat() if p.closed_at else None,
+    }
+
+
+async def broadcast_positions() -> None:
+    """Fetch all active positions from DB and broadcast to all clients (used after reconciliation)."""
+    if not _connected_clients:
+        return
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(OptionPosition).where(OptionPosition.status.in_(["OPEN", "CLOSING"]))
+        )
+        positions = result.scalars().all()
+    payload = {
+        "type": "initial_state",
+        "positions": [_position_to_dict(p) for p in positions],
+    }
+    await broadcast(payload)
+
+
 async def _send_initial_state(websocket: WebSocket) -> None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -85,31 +127,18 @@ async def _send_initial_state(websocket: WebSocket) -> None:
 
     payload = {
         "type": "initial_state",
-        "positions": [
-            {
-                "id": p.id,
-                "underlying": p.underlying_symbol,
-                "option_symbol": p.option_symbol,
-                "strike": p.strike,
-                "expiration": str(p.expiration_date),
-                "contracts": p.contracts,
-                "premium_received": p.premium_received,
-                "total_credit": p.total_credit,
-                "current_price": p.current_price,
-                "unrealized_pnl": p.unrealized_pnl,
-                "status": p.status,
-            }
-            for p in positions
-        ],
+        "positions": [_position_to_dict(p) for p in positions],
     }
     await websocket.send_text(json.dumps(payload, default=str))
 
 
 async def _send_position_update(websocket: WebSocket, option_symbol: str, current_price: float) -> None:
+    # Schwab stream may return symbols with spaces; DB stores with underscores — normalise both ways
+    normalised = option_symbol.replace(" ", "_").upper()
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(OptionPosition).where(
-                OptionPosition.option_symbol == option_symbol,
+                OptionPosition.option_symbol.in_([option_symbol, normalised]),
                 OptionPosition.status.in_(["OPEN", "CLOSING"]),
             )
         )

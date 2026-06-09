@@ -83,11 +83,14 @@ class RulesEngine:
                 if inst.get("assetType") == "EQUITY":
                     shares_by_symbol[inst.get("symbol", "")] = int(pos.get("longQuantity", 0))
 
-        buying_power = float(
-            account.get("securitiesAccount", {})
-            .get("currentBalances", {})
-            .get("buyingPower", 0)
-        )
+        balances = account.get("securitiesAccount", {}).get("currentBalances", {})
+        raw_buying_power = float(balances.get("buyingPower") or 0)
+        # Use cash-based value for sell puts sizing to avoid margin inflation.
+        # availableFunds / cashBalance represent actual cash; buyingPower can be 2× on margin accounts.
+        available_funds = float(balances.get("availableFunds") or balances.get("availableFundsNonMarginableTrade") or 0)
+        cash_balance = float(balances.get("cashBalance") or 0)
+        _candidates = [v for v in [available_funds, cash_balance] if v > 0]
+        buying_power = min(_candidates) if _candidates else raw_buying_power
 
         results: list[TradeCandidate] = []
         contract_type = "CALL" if strategy_type == "SELL_COVERED_CALL" else "PUT"

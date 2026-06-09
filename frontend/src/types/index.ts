@@ -110,7 +110,9 @@ export interface AccountHolding {
 
 export interface AccountData {
   portfolio_value: number | null
-  buying_power: number | null
-  cash_balance: number | null
+  buying_power: number | null          // raw Schwab buyingPower (margin-inflated for margin accounts)
+  cash_balance: number | null          // actual cash balance
+  available_funds: number | null       // availableFunds from Schwab (may differ from cashBalance)
+  sell_put_buying_power: number | null // conservative value used for sizing
   holdings: AccountHolding[]
 }

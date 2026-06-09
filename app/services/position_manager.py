@@ -55,6 +55,12 @@ class PositionManager:
             contracts=candidate.contracts,
             total_credit=total_credit,
         )
+        # Notify all connected WebSocket clients of the new position
+        try:
+            from app.api.routes.websocket import broadcast_positions
+            await broadcast_positions()
+        except Exception:
+            pass
         return position
 
     async def update_price(self, position_id: str, current_price: float) -> None:
@@ -75,6 +81,12 @@ class PositionManager:
                 position.status = "CLOSING"
                 position.exit_order_id = exit_order_id
                 await db.commit()
+        # Notify all connected WebSocket clients of the status change
+        try:
+            from app.api.routes.websocket import broadcast_positions
+            await broadcast_positions()
+        except Exception:
+            pass
 
     async def close_position(
         self, position_id: str, exit_price: float, close_reason: str
@@ -116,6 +128,12 @@ class PositionManager:
             realized_pnl=realized_pnl,
             reason=close_reason,
         )
+        # Notify all connected WebSocket clients that the position is gone
+        try:
+            from app.api.routes.websocket import broadcast_positions
+            await broadcast_positions()
+        except Exception:
+            pass
         return trade
 
 

@@ -125,6 +125,15 @@ class PositionReconciler:
             await db.commit()
 
         logger.info("Reconciler: done", **summary)
+
+        # Notify all WebSocket clients if any positions changed status
+        if summary.get("closed", 0) + summary.get("expired", 0) + summary.get("deleted_phantom", 0) + summary.get("updated_price", 0) > 0:
+            try:
+                from app.api.routes.websocket import broadcast_positions
+                await broadcast_positions()
+            except Exception as exc:
+                logger.warning("Reconciler: failed to broadcast position update", error=str(exc))
+
         return summary
 
 

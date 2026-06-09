@@ -58,7 +58,7 @@ function Dashboard({ logout }: { logout: () => void }) {
   const [tab, setTab] = useState<Tab>('dashboard')
   const { positions, connected, setPositions } = useWebSocket()
   const [summary, setSummary] = useState<PerformanceSummary | null>(null)
-  const [account, setAccount] = useState<{ portfolio_value: number | null; buying_power: number | null } | null>(null)
+  const [account, setAccount] = useState<{ portfolio_value: number | null; buying_power: number | null; cash_balance: number | null; available_funds: number | null; sell_put_buying_power: number | null } | null>(null)
   const [chatPrefill, setChatPrefill] = useState<string | undefined>(undefined)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -108,9 +108,17 @@ function Dashboard({ logout }: { logout: () => void }) {
   // Initial data fetch
   useEffect(() => { refresh() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 15-minute auto-refresh
+  // 15-minute full auto-refresh (positions + performance + account)
   useEffect(() => {
     const id = setInterval(() => { refreshFnRef.current() }, AUTO_REFRESH_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  // 90-second account refresh — keeps buying power / portfolio value in the header current
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetch('/api/account').then(r => r.ok ? r.json() : null).then(d => { if (d) setAccount(d) }).catch(() => {})
+    }, 90_000)
     return () => clearInterval(id)
   }, [])
 
@@ -171,7 +179,12 @@ function Dashboard({ logout }: { logout: () => void }) {
   const totalCredit = openPositions.reduce((sum, p) => sum + p.total_credit, 0)
   const unrealizedPnl = openPositions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0)
   const portfolioValue = account?.portfolio_value ?? null
-  const buyingPower = account?.buying_power ?? null
+  // Use sell_put_buying_power (conservative, cash-based) for display.
+  // If Schwab returns a margin account, raw buying_power may be 2× actual cash.
+  const buyingPower = account?.sell_put_buying_power ?? account?.buying_power ?? null
+  const isBuyingPowerInflated = account != null &&
+    account.buying_power != null && account.sell_put_buying_power != null &&
+    account.buying_power > (account.sell_put_buying_power * 1.15)
   const dayPnl = summary?.total_pnl ?? null
 
   const fmt = (n: number | null, signed = false) =>
@@ -267,7 +280,18 @@ function Dashboard({ logout }: { logout: () => void }) {
               <HeaderStat label="Day P&L" value={fmt(dayPnl, true)}
                 valueColor={dayPnl == null ? '#e6edf3' : dayPnl >= 0 ? GREEN : RED} isMobile={false} />
             )}
-            {!isMobile && <HeaderStat label="Buying Power" value={fmt(buyingPower)} isMobile={false} />}
+            {!isMobile && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
+                title={isBuyingPowerInflated
+                  ? `Margin account: Schwab reports $${(account?.buying_power ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} margin BP — showing available cash instead`
+                  : 'Available for trading (cash-secured)'}
+              >
+                <HeaderStat label={isBuyingPowerInflated ? 'Cash Avail.' : 'Buying Power'} value={fmt(buyingPower)} isMobile={false} />
+                {isBuyingPowerInflated && (
+                  <span style={{ fontSize: 10, color: '#8b949e', marginTop: -4 }}>margin acct</span>
+                )}
+              </div>
+            )}
             <span style={{
               width: 8, height: 8, borderRadius: '50%',
               background: connected ? GREEN : RED,
@@ -295,7 +319,7 @@ function Dashboard({ logout }: { logout: () => void }) {
           }}>
             {[
               { label: 'Day P&L', value: fmt(dayPnl, true), color: dayPnl == null ? '#e6edf3' : dayPnl >= 0 ? GREEN : RED },
-              { label: 'Buying Power', value: fmt(buyingPower), color: '#e6edf3' },
+              { label: isBuyingPowerInflated ? 'Cash Avail.' : 'Buying Power', value: fmt(buyingPower), color: '#e6edf3' },
               { label: 'Positions', value: String(openPositions.length), color: '#e6edf3' },
             ].map((s, i) => (
               <div key={i} style={{

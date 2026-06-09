@@ -183,7 +183,9 @@ async def _refresh_stream_subscriptions() -> None:
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(OptionPosition.option_symbol).where(OptionPosition.status == "OPEN")
+            select(OptionPosition.option_symbol).where(
+                OptionPosition.status.in_(["OPEN", "CLOSING"])
+            )
         )
         symbols = [row[0] for row in result.fetchall()]
 

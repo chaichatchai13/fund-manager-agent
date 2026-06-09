@@ -100,7 +100,14 @@ export function AccountHoldings() {
           {/* ── Short Options ── */}
           {(shortOptions.length > 0 || longOptions.length === 0) && (
             <div style={{ borderTop: '1px solid #21262d', paddingTop: 12, marginBottom: 4 }}>
-              <div style={sectionLabel}>Short Options</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ ...sectionLabel, marginBottom: 0 }}>Short Options</div>
+                {shortOptions.length > 0 && (
+                  <span style={{ color: '#58a6ff', fontSize: 11, fontWeight: 600 }}>
+                    {shortOptions.reduce((sum, h) => sum + Math.abs(h.quantity), 0)} contract{shortOptions.reduce((sum, h) => sum + Math.abs(h.quantity), 0) !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {shortOptions.length === 0
                   ? <div style={{ color: '#484f58', fontSize: 12 }}>No short option positions</div>
@@ -112,7 +119,12 @@ export function AccountHoldings() {
           {/* ── Long Options (rare, but show them too) ── */}
           {longOptions.length > 0 && (
             <div style={{ borderTop: '1px solid #21262d', paddingTop: 12, marginBottom: 4 }}>
-              <div style={sectionLabel}>Long Options</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ ...sectionLabel, marginBottom: 0 }}>Long Options</div>
+                <span style={{ color: '#58a6ff', fontSize: 11, fontWeight: 600 }}>
+                  {longOptions.reduce((sum, h) => sum + Math.abs(h.quantity), 0)} contract{longOptions.reduce((sum, h) => sum + Math.abs(h.quantity), 0) !== 1 ? 's' : ''}
+                </span>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {longOptions.map((h) => <OptionRow key={h.symbol} h={h} />)}
               </div>

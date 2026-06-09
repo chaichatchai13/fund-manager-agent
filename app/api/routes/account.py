@@ -76,10 +76,23 @@ async def get_account():
     balances = securities.get("currentBalances", {})
     positions = securities.get("positions", [])
 
+    # "buyingPower" in Schwab = margin buying power (may be 2× equity for margin accounts)
+    # "cashBalance" or "availableFunds" reflects actual cash available for cash-secured trades
+    raw_buying_power = balances.get("buyingPower")
+    available_funds = balances.get("availableFunds") or balances.get("availableFundsNonMarginableTrade")
+    cash_balance = balances.get("cashBalance")
+
+    # Use the most conservative non-zero value as "available for sell puts"
+    # (avoids margin inflation for cash-secured strategies)
+    _candidates = [v for v in [available_funds, cash_balance] if v is not None and v > 0]
+    sell_put_buying_power = min(_candidates) if _candidates else raw_buying_power
+
     return {
         "portfolio_value": balances.get("liquidationValue"),
-        "buying_power": balances.get("buyingPower"),
-        "cash_balance": balances.get("cashBalance"),
+        "buying_power": raw_buying_power,           # raw Schwab value (may be margin 2×)
+        "cash_balance": cash_balance,
+        "available_funds": available_funds,
+        "sell_put_buying_power": sell_put_buying_power,  # used by rule engine for sizing
         "holdings": _parse_holdings(positions),
         "schwab_connected": True,
     }
