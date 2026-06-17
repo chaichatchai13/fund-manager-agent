@@ -73,16 +73,17 @@ async def sms_optin():
     <div class="tagline">Private automated options trading system</div>
 
     <div id="form-section">
-      <h1>📱 Subscribe to SMS Trading Alerts</h1>
+      <h1>📱 Subscribe to Account Activity Notifications</h1>
       <p class="desc">
-        Receive real-time SMS notifications for your automated options trades,
-        position updates, and price alerts — directly to your phone.
+        Receive automated SMS notifications when brokerage account events occur —
+        order confirmations, position updates, and account summaries delivered directly
+        to your phone by the ThetaFlow application.
       </p>
       <ul class="bullets">
-        <li>Trade confirmations (sell puts &amp; covered calls)</li>
-        <li>Profit target and stop-loss notifications</li>
-        <li>Stock price movement alerts</li>
-        <li>Morning portfolio digest</li>
+        <li>Order confirmations (placed, filled, or cancelled)</li>
+        <li>Position status updates and realized P&amp;L at exit</li>
+        <li>Daily account summary (positions &amp; balance)</li>
+        <li>Application status alerts (e.g. connection issues)</li>
       </ul>
 
       <label class="field" for="phone">Mobile Phone Number</label>
@@ -91,11 +92,12 @@ async def sms_optin():
       <label class="consent-box" for="consent">
         <input type="checkbox" id="consent" />
         <span class="consent-text">
-          By checking this box, I agree to receive recurring automated SMS trading alerts
-          from <strong>ThetaFlow</strong> (operated by Chatchai Satienpattanakul) at the
-          mobile number provided above.
+          By checking this box, I agree to receive recurring automated SMS brokerage account
+          notifications from <strong>ThetaFlow</strong> (operated by Chatchai Satienpattanakul)
+          at the mobile number provided above. Messages are generated automatically by the
+          application when account events occur (order fills, position updates, account summaries).
           Message frequency varies — up to <strong>10 messages per trading day</strong>
-          based on market activity.
+          based on account activity.
           <strong>Message and data rates may apply.</strong>
           Reply <strong>STOP</strong> to cancel at any time.
           Reply <strong>HELP</strong> for assistance.
@@ -162,16 +164,19 @@ async def privacy_policy():
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p><strong>Effective date: May 21, 2026 &nbsp;|&nbsp; Last updated: May 27, 2026</strong></p>
+  <p><strong>Effective date: May 21, 2026 &nbsp;|&nbsp; Last updated: June 2026</strong></p>
 
-  <p>ThetaFlow ("we", "our", "the application") is a private, single-user automated options
-  trading application operated by Chatchai Satienpattanakul. This Privacy Policy explains how
-  personal information is collected, used, and protected.</p>
+  <p>ThetaFlow ("we", "our", "the application") is a private automated brokerage account
+  management application operated by Chatchai Satienpattanakul. The application connects to a
+  Charles Schwab brokerage account via API and sends automated SMS notifications when account
+  activity occurs. This Privacy Policy explains how personal information is collected, used,
+  and protected.</p>
 
   <h2>1. Information We Collect</h2>
   <ul>
-    <li><strong>Phone number</strong> — provided voluntarily by the application owner to receive
-        SMS trading alerts. Used solely to deliver alerts and receive reply confirmations.</li>
+    <li><strong>Phone number</strong> — provided voluntarily through the opt-in form at
+        theta-flows.com/sms-optin. Used solely to deliver account activity notifications
+        and receive opt-out/help replies.</li>
     <li><strong>Brokerage account data</strong> — fetched from the Charles Schwab API on behalf
         of the account owner. Stored locally in the application database on a private server.</li>
     <li><strong>Push notification tokens</strong> — stored locally to deliver browser push
@@ -179,13 +184,15 @@ async def privacy_policy():
   </ul>
 
   <h2>2. SMS / Text Messaging Program</h2>
-  <p>ThetaFlow operates an SMS alert program that sends automated trading notifications to the
-  registered phone number. By opting in, you consent to receive text messages including:</p>
+  <p>ThetaFlow operates an automated SMS notification program that delivers brokerage account
+  activity alerts to the registered phone number. Messages are triggered solely by application
+  events — no human manually composes or sends any message. By opting in, you consent to
+  receive text messages including:</p>
   <ul>
-    <li>Portfolio position updates and profit/loss notifications</li>
-    <li>Stock price movement alerts based on configured thresholds</li>
-    <li>Trade confirmation requests requiring a YES or NO reply</li>
-    <li>Morning digest and market open summaries</li>
+    <li>Brokerage order confirmations (orders placed, filled, or cancelled)</li>
+    <li>Open position status updates and realized profit/loss notifications</li>
+    <li>Account balance and portfolio summary notifications</li>
+    <li>Application status alerts (e.g. connectivity issues requiring attention)</li>
   </ul>
   <p><strong>Message frequency:</strong> Varies based on market activity; typically 1–10 messages
   per trading day.</p>
@@ -197,10 +204,10 @@ async def privacy_policy():
 
   <h2>3. How We Use Your Information</h2>
   <ul>
-    <li>To deliver SMS trading alerts to the registered phone number.</li>
-    <li>To process inbound SMS replies (YES/NO confirmations) and execute requested actions.</li>
+    <li>To deliver automated SMS account activity notifications to the registered phone number.</li>
+    <li>To process inbound SMS replies (STOP/HELP/UNSTOP) per carrier requirements.</li>
     <li>To display portfolio performance and position data in the private dashboard.</li>
-    <li>To operate automated trading rules on behalf of the account owner.</li>
+    <li>To operate automated account management rules on behalf of the account owner.</li>
   </ul>
 
   <h2>4. Data Sharing and Disclosure</h2>
@@ -269,21 +276,25 @@ async def terms_of_service():
   <h1>Terms of Service</h1>
   <p><strong>Last updated: June 2026</strong></p>
 
-  <p>ThetaFlow is a private, single-user automated options trading system operated by and for
-  the application owner only. These terms govern use of the SMS notification feature.</p>
+  <p>ThetaFlow is a private automated brokerage account management application operated by
+  Chatchai Satienpattanakul. The application connects to a Charles Schwab brokerage account
+  via API and sends automated SMS notifications when account activity occurs. These terms
+  govern use of the SMS notification feature.</p>
 
   <h2>Program Description</h2>
-  <p>ThetaFlow sends automated SMS alerts to the registered phone number for the following purposes:</p>
+  <p>ThetaFlow sends automated SMS notifications to the registered phone number when brokerage
+  account events are triggered by the application. All messages are generated automatically by
+  the application — no individual manually composes or sends messages. Notifications include:</p>
   <ul>
-    <li>Stock price movement alerts</li>
-    <li>Options position updates and profit/loss notifications</li>
-    <li>Trade confirmation requests requiring a YES or NO reply</li>
-    <li>Morning portfolio digest and market open alerts</li>
+    <li>Brokerage order confirmations — when orders are placed, filled, or cancelled</li>
+    <li>Open position status updates and realized profit/loss notifications at exit</li>
+    <li>Daily account summary — open positions count and portfolio balance</li>
+    <li>Application status alerts — e.g. brokerage connection issues requiring attention</li>
   </ul>
 
   <h2>Message Frequency</h2>
-  <p>Message frequency varies based on market activity and configured alert thresholds.
-  Typically 1–10 messages per trading day.</p>
+  <p>Message frequency varies based on account activity. Typically 1–10 messages per trading
+  day, depending on the number of orders placed and positions managed.</p>
 
   <h2>Message &amp; Data Rates</h2>
   <p>Message and data rates may apply depending on your mobile carrier plan.</p>
