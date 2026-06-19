@@ -89,28 +89,32 @@ async def sms_optin():
       <label class="field" for="phone">Mobile Phone Number</label>
       <input type="tel" id="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" />
 
-      <label class="consent-box" for="consent">
-        <input type="checkbox" id="consent" />
-        <span class="consent-text">
-          By checking this box, I agree to receive recurring automated SMS brokerage account
-          notifications from <strong>ThetaFlow</strong> (operated by Chatchai Satienpattanakul)
-          at the mobile number provided above. Messages are generated automatically by the
-          application when account events occur (order fills, position updates, account summaries).
-          Message frequency varies — up to <strong>10 messages per trading day</strong>
-          based on account activity.
-          <strong>Message and data rates may apply.</strong>
-          Reply <strong>STOP</strong> to cancel at any time.
-          Reply <strong>HELP</strong> for assistance.
-          View our <a href="/privacy" target="_blank">Privacy Policy</a> and
-          <a href="/terms" target="_blank">Terms of Service</a>.
-        </span>
-      </label>
+      <div style="background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px;padding:14px 16px;margin:16px 0;">
+        <label class="consent-box" for="consent" style="margin:0;">
+          <input type="checkbox" id="consent" />
+          <span class="consent-text">
+            <strong>Optional:</strong> By checking this box, I agree to receive recurring
+            automated SMS brokerage account notifications from <strong>ThetaFlow</strong>
+            (operated by Chatchai Satienpattanakul) at the mobile number provided above.
+            Messages are generated automatically by the application when account events occur
+            (order fills, position updates, account summaries).
+            Message frequency varies — up to <strong>10 messages per trading day</strong>
+            based on account activity.
+            <strong>Message and data rates may apply.</strong>
+            Reply <strong>STOP</strong> to cancel at any time.
+            Reply <strong>HELP</strong> for assistance.
+            View our <a href="/privacy" target="_blank">Privacy Policy</a> and
+            <a href="/terms" target="_blank">Terms of Service</a>.
+          </span>
+        </label>
+      </div>
 
       <button class="btn" id="submit-btn" disabled onclick="submitForm()">
-        Subscribe to SMS Alerts
+        Submit
       </button>
 
       <p class="freq-note">
+        SMS consent is optional and not required to use ThetaFlow.<br>
         Msg &amp; data rates may apply &nbsp;·&nbsp; Reply STOP to unsubscribe &nbsp;·&nbsp;
         Reply HELP for help<br>
         <a href="/privacy">Privacy Policy</a> &nbsp;·&nbsp;
@@ -119,13 +123,9 @@ async def sms_optin():
     </div>
 
     <div class="success" id="success-section">
-      <div class="check">✅</div>
-      <h2>You're subscribed!</h2>
-      <p>
-        SMS alerts have been enabled for your ThetaFlow account.<br><br>
-        Reply <strong>STOP</strong> at any time to unsubscribe.<br>
-        Reply <strong>HELP</strong> for assistance.
-      </p>
+      <div class="check" id="success-icon">✅</div>
+      <h2 id="success-title">Submitted!</h2>
+      <p id="success-body"></p>
     </div>
   </div>
 
@@ -135,14 +135,32 @@ async def sms_optin():
     var btn = document.getElementById('submit-btn');
 
     function updateBtn() {{
-      btn.disabled = !(checkbox.checked && phone.value.trim().length >= 7);
+      btn.disabled = phone.value.trim().length < 7;
     }}
     checkbox.addEventListener('change', updateBtn);
     phone.addEventListener('input', updateBtn);
 
     function submitForm() {{
+      var opted_in = checkbox.checked;
       document.getElementById('form-section').style.display = 'none';
-      document.getElementById('success-section').style.display = 'block';
+      var section = document.getElementById('success-section');
+      section.style.display = 'block';
+      if (opted_in) {{
+        document.getElementById('success-icon').textContent = '✅';
+        document.getElementById('success-title').textContent = 'You’re subscribed!';
+        document.getElementById('success-body').innerHTML =
+          'SMS account notifications have been enabled for your ThetaFlow account.<br><br>' +
+          'Reply <strong>STOP</strong> at any time to unsubscribe.<br>' +
+          'Reply <strong>HELP</strong> for assistance.';
+      }} else {{
+        document.getElementById('success-icon').textContent = '📋';
+        document.getElementById('success-title').textContent = 'Phone number saved';
+        document.getElementById('success-body').innerHTML =
+          'Your phone number has been saved.<br><br>' +
+          'SMS notifications were <strong>not</strong> enabled because the consent ' +
+          'checkbox was not checked. You can return to this page and resubmit with ' +
+          'the checkbox checked to enable SMS alerts.';
+      }}
     }}
   </script>
 </body>
